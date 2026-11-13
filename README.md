@@ -18,3 +18,8 @@ App personale per due cose: **trading** (segnali su cripto e metalli con regole 
 Binance e Yahoo Finance (prezzi), SEC EDGAR (bilanci ufficiali), Alternative.me (sentiment), justETF e Fineco (costi e promozioni dei broker). Il server gira 24 ore su 24 su Supabase: trading ogni 5 minuti, ETF e bilanci ogni sera.
 
 Rendimenti passati e prove sullo storico non garantiscono quelli futuri.
+
+## Novità v1.5 (13/11/2026)
+- **Robot MT5 v1.5**: invia ogni 30 s il conto all'app (saldo, equity, posizioni, chiusure, fase FTMO) e applica i limiti FTMO in tempo reale: freno a -3% giornaliero, chiude tutto a -4,5% giornaliero o -9% totale, si ferma all'obiettivo di profitto. Parametri: `FtmoPhase` (0 prova gratuita, 1 challenge, 2 verifica, 3 finanziato), `InitialBalance`.
+- **App**: pannello "Il tuo conto MT5" con posizioni sulla barra stop–entrata–obiettivo, sezione "Temi in crescita" (motore a spinta, prova sui dati veri), lista notizie con blocco degli ingressi dopo notizie gravi.
+- **Server** `ea` v8: notizie RSS (CoinDesk, Cointelegraph, Decrypt, MarketWatch); `?news=1`, `?acct=1`.

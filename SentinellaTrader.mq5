@@ -1,14 +1,16 @@
 //+------------------------------------------------------------------+
-//| SentinellaTrader.mq5  v1.4                                       |
+//| SentinellaTrader.mq5  v1.5                                       |
 //| Esegue in MT5 i segnali di Sentinella Mercati.                   |
 //| - legge dal server le operazioni aperte ogni 30 secondi          |
 //| - entra a mercato SOLO se il server dice che l'ingresso e'       |
 //|   ancora valido (prezzo vicino all'entrata, in tempo)            |
 //| - lotto dal rischio %, stop loss, take profit 2                  |
 //| - stop mobile fino al take profit 2 (R = distanza entrata-stop)  |
+//| - v1.5: invia il conto al server ogni 30 s (per l'app) e applica |
+//|   i limiti FTMO in tempo reale (chiude tutto prima di sforarli)  |
 //+------------------------------------------------------------------+
 #property strict
-#property version "1.40"
+#property version "1.50"
 #include <Trade\Trade.mqh>
 
 input string ApiUrl          = "https://jkvvfzpvwbjxtdzsesct.supabase.co/functions/v1/ea";
@@ -18,6 +20,12 @@ input double MaxPriceGapPct  = 2.5;    // scarto massimo tra prezzo del segnale 
 input double DayStopPercent  = 3.0;    // niente nuove operazioni se oggi sei a -X% dal saldo di inizio giornata
 input string SymbolSuffix    = "";     // suffisso dei simboli del broker, se serve
 input ulong  MagicNumber     = 770011;
+// FTMO (v1.5)
+input int    FtmoPhase       = 0;      // 0 prova gratuita, 1 challenge, 2 verifica, 3 conto finanziato
+input double InitialBalance  = 0;      // saldo iniziale del conto FTMO (0 = lo legge dal saldo alla prima partenza)
+input double CloseAllDayPct  = 4.5;    // chiude TUTTO se oggi sei a -X% (limite FTMO 5%)
+input double CloseAllTotPct  = 9.0;    // chiude TUTTO se sei a -X% dal saldo iniziale (limite FTMO 10%)
+input bool   StopAtTarget    = true;   // a obiettivo di profitto raggiunto chiude tutto e non apre piu'
 // Stop mobile (multipli di R)
 input bool   UseTrailing     = true;
 input double BreakEvenAtR    = 1.0;    // a +1.0R lo stop va in pareggio
@@ -27,12 +35,18 @@ input double TrailDistR      = 0.75;   // a distanza 0.75R dal prezzo
 
 CTrade trade;
 int tickCount = 0;
+string guardMsg = "";
+double initBal = 0;
 
 //+------------------------------------------------------------------+
 int OnInit()
   {
    trade.SetExpertMagicNumber(MagicNumber);
    trade.SetDeviationInPoints(50);
+   string gk = "SM_INIT_" + (string)AccountInfoInteger(ACCOUNT_LOGIN);
+   if(InitialBalance > 0) initBal = InitialBalance;
+   else if(GlobalVariableCheck(gk)) initBal = GlobalVariableGet(gk);
+   else { initBal = AccountInfoDouble(ACCOUNT_BALANCE); GlobalVariableSet(gk, initBal); }
    EventSetTimer(5);
    Print("SentinellaTrader avviato. Conto ", AccountInfoInteger(ACCOUNT_LOGIN),
          " saldo ", DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE), 2));
@@ -76,6 +90,83 @@ bool DayGuardHit()
    return (eq <= dayStart * (1.0 - DayStopPercent / 100.0));
   }
 //+------------------------------------------------------------------+
+double DayStartBalance() { return AccountInfoDouble(ACCOUNT_BALANCE) - TodayClosedResult(); }
+double TargetPct() { return FtmoPhase == 0 || FtmoPhase == 1 ? 10.0 : FtmoPhase == 2 ? 5.0 : 0.0; }
+//+------------------------------------------------------------------+
+void CloseAll(const string why)
+  {
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+     {
+      ulong t = PositionGetTicket(i);
+      if(t == 0 || PositionGetInteger(POSITION_MAGIC) != (long)MagicNumber) continue;
+      if(!trade.PositionClose(t)) Print("Chiusura fallita ticket ", t, ": ", trade.ResultRetcode());
+     }
+   Print("GUARDIA FTMO: ", why);
+  }
+// true = nuove operazioni vietate. Chiude tutto se serve.
+bool FtmoGuard()
+  {
+   double eq = AccountInfoDouble(ACCOUNT_EQUITY), ds = DayStartBalance();
+   double dayLoss = (ds - eq) / initBal * 100.0, totLoss = (initBal - eq) / initBal * 100.0, gain = (eq - initBal) / initBal * 100.0;
+   if(dayLoss >= CloseAllDayPct)  { guardMsg = "STOP: perdita giornaliera " + DoubleToString(dayLoss, 2) + "%"; if(CountOpen() > 0) CloseAll(guardMsg); return true; }
+   if(totLoss >= CloseAllTotPct)  { guardMsg = "STOP: perdita totale " + DoubleToString(totLoss, 2) + "%"; if(CountOpen() > 0) CloseAll(guardMsg); return true; }
+   if(StopAtTarget && TargetPct() > 0 && gain >= TargetPct())
+     { guardMsg = "OBIETTIVO RAGGIUNTO +" + DoubleToString(gain, 2) + "%"; if(CountOpen() > 0) CloseAll(guardMsg); return true; }
+   if(dayLoss >= DayStopPercent)  { guardMsg = "Freno giornaliero " + DoubleToString(dayLoss, 2) + "%"; return true; }
+   guardMsg = "";
+   return false;
+  }
+//+------------------------------------------------------------------+
+string Js(const string x) { string r = x; StringReplace(r, "\\", "/"); StringReplace(r, "\"", "'"); return r; }
+string Nm(const double v, const int d = 2) { return DoubleToString(v, d); }
+void SendAccount()
+  {
+   string j = "{\"login\":\"" + (string)AccountInfoInteger(ACCOUNT_LOGIN) + "\",\"server\":\"" + Js(AccountInfoString(ACCOUNT_SERVER)) +
+              "\",\"company\":\"" + Js(AccountInfoString(ACCOUNT_COMPANY)) + "\",\"cur\":\"" + AccountInfoString(ACCOUNT_CURRENCY) +
+              "\",\"lev\":" + (string)AccountInfoInteger(ACCOUNT_LEVERAGE) + ",\"bal\":" + Nm(AccountInfoDouble(ACCOUNT_BALANCE)) +
+              ",\"eq\":" + Nm(AccountInfoDouble(ACCOUNT_EQUITY)) + ",\"mar\":" + Nm(AccountInfoDouble(ACCOUNT_MARGIN)) +
+              ",\"free\":" + Nm(AccountInfoDouble(ACCOUNT_MARGIN_FREE)) + ",\"prof\":" + Nm(AccountInfoDouble(ACCOUNT_PROFIT)) +
+              ",\"init\":" + Nm(initBal) + ",\"dayStart\":" + Nm(DayStartBalance()) + ",\"phase\":" + (string)FtmoPhase +
+              ",\"ver\":\"1.5\",\"guard\":\"" + Js(guardMsg) + "\",\"pos\":[";
+   int c = 0;
+   for(int i = 0; i < PositionsTotal() && c < 40; i++)
+     {
+      ulong t = PositionGetTicket(i); if(t == 0) continue;
+      string s = PositionGetString(POSITION_SYMBOL);
+      int dg = (int)SymbolInfoInteger(s, SYMBOL_DIGITS);
+      if(c++) j += ",";
+      j += "{\"tk\":\"" + (string)t + "\",\"sym\":\"" + s + "\",\"type\":" + (string)PositionGetInteger(POSITION_TYPE) +
+           ",\"vol\":" + DoubleToString(PositionGetDouble(POSITION_VOLUME), 2) + ",\"open\":" + DoubleToString(PositionGetDouble(POSITION_PRICE_OPEN), dg) +
+           ",\"sl\":" + DoubleToString(PositionGetDouble(POSITION_SL), dg) + ",\"tp\":" + DoubleToString(PositionGetDouble(POSITION_TP), dg) +
+           ",\"px\":" + DoubleToString(PositionGetDouble(POSITION_PRICE_CURRENT), dg) + ",\"prof\":" + Nm(PositionGetDouble(POSITION_PROFIT)) +
+           ",\"swap\":" + Nm(PositionGetDouble(POSITION_SWAP)) + ",\"cmt\":\"" + Js(PositionGetString(POSITION_COMMENT)) +
+           "\",\"magic\":" + (string)PositionGetInteger(POSITION_MAGIC) + ",\"time\":" + (string)(PositionGetInteger(POSITION_TIME) * 1000) + "}";
+     }
+   j += "],\"deals\":[";
+   c = 0;
+   if(HistorySelect(TimeCurrent() - 14 * 86400, TimeCurrent() + 60))
+      for(int i = HistoryDealsTotal() - 1; i >= 0 && c < 40; i--)
+        {
+         ulong t = HistoryDealGetTicket(i);
+         long ty = HistoryDealGetInteger(t, DEAL_TYPE);
+         if(ty != DEAL_TYPE_BUY && ty != DEAL_TYPE_SELL) continue;
+         if(HistoryDealGetInteger(t, DEAL_ENTRY) != DEAL_ENTRY_OUT) continue;
+         string s = HistoryDealGetString(t, DEAL_SYMBOL);
+         if(c++) j += ",";
+         j += "{\"tk\":\"" + (string)t + "\",\"sym\":\"" + s + "\",\"type\":" + (string)ty + ",\"vol\":" + DoubleToString(HistoryDealGetDouble(t, DEAL_VOLUME), 2) +
+              ",\"price\":" + DoubleToString(HistoryDealGetDouble(t, DEAL_PRICE), 5) + ",\"prof\":" + Nm(HistoryDealGetDouble(t, DEAL_PROFIT)) +
+              ",\"comm\":" + Nm(HistoryDealGetDouble(t, DEAL_COMMISSION)) + ",\"swap\":" + Nm(HistoryDealGetDouble(t, DEAL_SWAP)) +
+              ",\"cmt\":\"" + Js(HistoryDealGetString(t, DEAL_COMMENT)) + "\",\"magic\":" + (string)HistoryDealGetInteger(t, DEAL_MAGIC) +
+              ",\"time\":" + (string)(HistoryDealGetInteger(t, DEAL_TIME) * 1000) + "}";
+        }
+   j += "]}";
+   char post[], res[]; string hdr;
+   StringToCharArray(j, post, 0, StringLen(j));
+   ResetLastError();
+   int code = WebRequest("POST", ApiUrl, "Content-Type: application/json\r\n", 8000, post, res, hdr);
+   if(code != 200) Print("Invio conto all'app non riuscito (codice ", code, ", errore ", GetLastError(), ")");
+  }
+//+------------------------------------------------------------------+
 // adv = giudizio del server sull'ingresso: MARKET, LIMIT, STOP, LATE, WEAK, FLAT, STALE, DONE, INVALID
 void Handle(const long id, const string sym, const int dir, const double entry,
             const double sl, const double tp1, const double tp2, const long createdMs,
@@ -95,7 +186,7 @@ void Handle(const long id, const string sym, const int dir, const double entry,
    string s = sym + SymbolSuffix;
    if(!SymbolSelect(s, true)) { GlobalVariableSet(gv, 1); Print("Simbolo non trovato in MT5: ", s, ". Controlla Market Watch o SymbolSuffix"); return; }
    if(CountOpen() >= MaxOpen) return;
-   if(DayGuardHit()) { Print("Freno giornaliero attivo: nessuna nuova operazione"); return; }
+   if(FtmoGuard()) { Print("Guardia attiva (", guardMsg, "): nessuna nuova operazione"); return; }
 
    double ask = SymbolInfoDouble(s, SYMBOL_ASK), bid = SymbolInfoDouble(s, SYMBOL_BID);
    double px = dir > 0 ? ask : bid;
@@ -226,7 +317,9 @@ void Poll()
 //+------------------------------------------------------------------+
 void OnTimer()
   {
+   FtmoGuard();
    ManagePositions();
-   if(++tickCount % 6 == 0) Poll();
+   if(tickCount % 6 == 0) { SendAccount(); Poll(); }
+   tickCount++;
   }
 //+------------------------------------------------------------------+

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#0e1420">
-<title>Sentinella Mercati</title><meta name="version" content="2026-11-13.2">
+<title>Sentinella Mercati</title><meta name="version" content="2026-11-13.3">
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
 /* Layout: banda di controllo in alto, poi colonna segnali (larga) + colonna agenti/diario; tutto impilato su telefono */
@@ -138,6 +138,8 @@ footer{color:var(--mut);font-size:12px;margin-top:20px;max-width:70ch}
     <section><h2>Medie mobili 21 / 50 / 200 alla prova</h2><p class="sm mut" style="margin:0 0 8px">Regola provata: si entra quando la media a 21 incrocia la 50 nel verso del trend lungo (prezzo e media 50 dallo stesso lato della 200). Uscite provate: X = si esce quando la 21 incrocia di nuovo la 50 · C e D = stop mobile. Costi e interessi inclusi, R netti per operazione.</p><div class="tw"><table><thead><tr><th>Mercati</th><th>TF</th><th>Medie</th><th>Lato</th><th>Uscita</th><th>Casi</th><th>Scelta</th><th>Mai visto</th><th>Giudizio</th></tr></thead><tbody id="matest"><tr><td colspan="9" class="empty">In attesa dei dati…</td></tr></tbody></table></div><div id="maverd"></div></section>
   </div>
   <div class="col">
+    <section id="acsec" hidden><h2>Il tuo conto MT5 <span id="acage" class="sm mut"></span></h2><div id="ac"></div></section>
+    <section id="nwsec"><h2>Notizie delle ultime 3 ore <span class="sm mut" id="nwn"></span></h2><p class="sm mut" style="margin:0 0 6px">Una notizia grave su un asset (hack, causa legale, divieto, crollo) mette in pausa i nuovi ingressi su quell'asset.</p><div id="nw"><div class="empty">In attesa…</div></div></section>
     <section id="ftsec" hidden><h2>Conto FTMO</h2><div id="ft"></div></section>
     <section><h2>Tavolo degli agenti <span id="agt"></span></h2><div id="agents"><div class="empty">In attesa dei dati…</div></div></section>
     <section><h2>Diario e file degli errori</h2><div id="stats"></div>
@@ -200,6 +202,7 @@ footer{color:var(--mut);font-size:12px;margin-top:20px;max-width:70ch}
     </section>
   </div>
   <div class="col">
+    <section><h2>Temi in crescita: dove va la spinta</h2><p class="sm mut" style="margin:0 0 8px">Intelligenza artificiale, chip, robotica, sanità, cybersicurezza, spazio, difesa, energia, India. Il motore non segue una regola fissa: ogni mese ordina ETF e temi per spinta reale (media dei rendimenti a 3, 6 e 12 mesi) e compra solo ciò che ha 12 mesi positivi. Si compra solo con i soldi nuovi, quindi niente tasse da vendita.</p><div id="sat"><div class="empty">In attesa dei dati…</div></div></section>
     <section><h2>Cosa evitare e perché</h2><div id="avoid"><div class="empty">In attesa dei dati…</div></div></section>
     <section><h2>Comprare e tenere o seguire le medie?</h2><p class="sm mut" style="margin:0 0 8px">Prova su decenni di borsa: restare sempre investiti contro uscire quando il prezzo scende sotto le medie. Rendimento annuo composto e peggior calo dal massimo. Quando si è fuori la liquidità rende zero.</p><div class="tw"><table><thead><tr><th>Mercato</th><th>Anni</th><th>Sempre dentro</th><th>Media 200</th><th>Incrocio 50/200</th><th>21/50/200</th></tr></thead><tbody id="lt"></tbody></table></div><div id="ltverd"></div></section>
     <section><h2>Azioni: bilanci ufficiali</h2><p class="sm mut" style="margin:0 0 8px">Numeri presi dai bilanci depositati alla SEC (l'autorità di borsa americana): ricavi, utili, cassa vera generata e dove l'azienda sposta i soldi. Aggiornati ogni sera.</p><div id="stocks"><div class="empty">In attesa dei dati…</div></div></section>
@@ -407,6 +410,7 @@ function draw(){
   line(K.e50,col('--mut'),1);line(K.e200,col('--acc'),1.6);
   if(e)for(const [p,c,t] of [[e.entry,'--fg','ENTRATA'],[e.sl,'--dn','STOP'],[e.tp1,'--up','TP1']]){const y=Y(p);g.strokeStyle=col(c);g.setLineDash([5,4]);g.lineWidth=1.2;g.beginPath();g.moveTo(0,y);g.lineTo(w-RW,y);g.stroke();g.setLineDash([]);g.fillStyle=col(c);g.fillText(t,4,y-8)}}
 /*INVESTIMENTI*/
+const EA_API='https://jkvvfzpvwbjxtdzsesct.supabase.co/functions/v1/ea';
 const INV_API='https://jkvvfzpvwbjxtdzsesct.supabase.co/functions/v1/inv';
 let IV=null,PR=null,TAB=LS.get('tab','trading');
 const eur=x=>x==null||!isFinite(x)?'—':x.toLocaleString('it-IT',{style:'currency',currency:'EUR',maximumFractionDigits:Math.abs(x)>=1000?0:2});
@@ -565,7 +569,39 @@ function renderGoal(){
   <div class="note"><b>Cosa accelera davvero.</b> 1) <b>Il versamento</b>: è la leva più forte nei primi 10 anni. Con ${eur(dep)} al mese servono ${yrs(m.k)}; per farcela in ${Y} anni servono ${eur(m.need)} al mese. Ogni aumento di stipendio o entrata extra va qui. 2) <b>FTMO</b>: un conto finanziato ti fa guadagnare l'80% dei profitti su capitale non tuo. Le strategie accese nel laboratorio fanno in media ${pc(T.gross,2)} al mese sul conto se prese tutte; contando i limiti di posizioni e i mercati che si muovono insieme stimo ${pc(T.real,2)}${F?`, cioè circa ${eur(F*T.real*.8)} al mese per te su ${eur(F)}, reinvestiti qui`:''}. Prima va superata la sfida (obiettivo +10%, poi +5%, senza perdere più del 5% in un giorno o del 10% in totale). 3) <b>Il rendimento</b>: alzarlo prendendo più rischio (leva, una sola azione, cripto in blocco) accorcia i tempi solo se va bene e li allunga di anni se va male: è l'unica leva che non spingo oltre i dati.</div>
   <p class="sm mut">Rendimenti del piano: periodi reali di 5 anni degli ETF del tuo profilo, meno lo 0,2% di bollo. Il versamento cresce del ${pu(inc,0)} ogni anno. FTMO conta solo se il conto è già finanziato; i risultati di trading variano molto di mese in mese.</p>`}
 function renderAdv(){const n=IV&&IV.brokers&&IV.brokers.note;$('#advnote').innerHTML=n&&n.text?`<div class="note"><b>Nota della settimana</b> <span class="sm mut">(${new Date(n.t).toLocaleDateString('it-IT')})</span><br>${esc(n.text).replace(/\n/g,'<br>')}</div>`:''}
-function renderInv(){renderGoal();renderAdv();renderEtf();renderStocks();renderAvoid();renderLt();renderBrokers();renderMa();if(!$('#p_hold').children.length||!$('#p_hold').querySelector('input'))renderHold((PR&&PR.hold)||{});renderCalcOpts();renderPlan()}
+
+// ---- temi in crescita (dati reali dal server) ----
+function renderSat(){const S=IV&&IV.sat;if(!S||!S.rank){return}
+  const pc=x=>x==null?'–':(x*100).toFixed(0)+'%';const R=S.rank;let k=0;
+  const rows=R.map(e=>{const buy=e.s>0&&e.m12>0&&k<2;if(buy)k++;return `<tr><td style="min-width:170px"><b>${esc(e.a)}</b><div class="sm mut">${esc(e.n)} · ${esc(e.t.replace(/\..*/,''))} · TER ${e.ter!=null?e.ter+'%':'–'}</div></td><td class="num">${pc(e.m3)}</td><td class="num">${pc(e.m6)}</td><td class="num">${pc(e.m12)}</td><td class="num"><b>${e.s==null?'–':(e.s*100).toFixed(0)}</b></td><td class="num dn">${pc(e.maxdd)}</td><td>${buy?'<b class="up">Comprabile ora</b>':e.m12>0?'Aspetta (non è tra i 2 più forti)':'<span class="dn">Evita: 12 mesi negativi</span>'}</td></tr>`}).join('');
+  let bt='';const B=S.bt3||S.bt2;if(B&&B.r){const L={core:'Solo MSCI World',eq:'80% MSCI World + 20% temi in parti uguali',mom:'80% MSCI World + 20% sui 2 temi più forti',all:'Ogni mese nei 2 più forti (MSCI World + temi)'};
+    bt=`<h3 style="margin:14px 0 6px;font-size:14px">Prova sui dati veri: ${esc(B.from)} → ${esc(B.to)}, 100 € al mese</h3><div class="tw"><table><thead><tr><th>Strategia</th><th>Rendimento annuo</th><th>Capitale / versato</th><th>Peggior calo</th></tr></thead><tbody>`+Object.keys(L).filter(x=>B.r[x]).map(x=>`<tr><td>${L[x]}</td><td class="num"><b>${(B.r[x].irr*100).toFixed(1)}%</b></td><td class="num">×${B.r[x].mult.toFixed(2)}</td><td class="num dn">${(B.r[x].dd*100).toFixed(0)}%</td></tr>`).join('')+`</tbody></table></div><p class="sm mut">Il passato non garantisce il futuro: la rotazione sui temi guadagna di più quando un tema guida il mercato e perde quando la spinta si inverte. Per questo il piano mensile ne usa solo una quota.</p>`}
+  $('#sat').innerHTML=`<div class="tw"><table><thead><tr><th>Tema</th><th>3 mesi</th><th>6 mesi</th><th>12 mesi</th><th>Punteggio</th><th>Peggior calo</th><th>Verdetto</th></tr></thead><tbody>${rows}</tbody></table></div>`+bt}
+// ---- conto MT5 reale (inviato dal robot) ----
+
+async function loadNews(){try{const r=await fetch(EA_API+'?news=1',{cache:'no-store'});const j=await r.json();const dec=t=>{const d=document.createElement('textarea');d.innerHTML=t;return d.value};
+  const it=(j.items||[]).filter(n=>n.sev||n.as.length).slice(0,12),sv=it.filter(n=>n.sev).length;$('#nwn').textContent=sv?'· '+sv+' gravi: ingressi in pausa sugli asset coinvolti':'· nessuna notizia grave';
+  $('#nw').innerHTML=it.length?it.map(n=>`<div class="sm" style="padding:5px 0;border-bottom:1px solid var(--line)">${n.sev?'<b class="dn">GRAVE</b> ':''}${esc(dec(n.ti))}<div class="mut">${esc(n.src)} · ${new Date(n.t).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}${n.as.length?' · '+n.as.join(', '):''}</div></div>`).join(''):'<div class="empty">Nessuna notizia rilevante sui tuoi mercati.</div>'}catch(e){}}
+let AC=null;
+async function loadAcct(){try{const r=await fetch(EA_API+'?acct=1',{cache:'no-store'});const j=await r.json();AC=(j.accts||[])[0]||null}catch(e){}renderAcct()}
+function posBar(p){const buy=p.type===0,lv=[p.sl,p.open,p.tp,p.px].filter(x=>x>0),lo=Math.min(...lv),hi=Math.max(...lv),w=hi-lo||1,at=x=>((x-lo)/w*100).toFixed(1);
+  const R=p.sl>0?Math.abs(p.open-p.sl):0,m=R?((buy?p.px-p.open:p.open-p.px)/R):null;
+  return `<div class="brk" style="padding:8px 10px"><header><b>${buy?'COMPRA':'VENDI'} ${esc(p.sym)}</b><span class="num ${p.prof>=0?'up':'dn'}">${p.prof>=0?'+':''}${p.prof.toFixed(2)}${m!=null?' · '+m.toFixed(2)+'R':''}</span></header>
+  <div style="position:relative;height:10px;background:var(--bg);border-radius:5px;margin:12px 4px 4px">${p.sl>0?`<i style="position:absolute;left:${at(p.sl)}%;top:-3px;width:3px;height:16px;background:var(--dn)"></i>`:''}<i style="position:absolute;left:${at(p.open)}%;top:-3px;width:2px;height:16px;background:var(--mut)"></i>${p.tp>0?`<i style="position:absolute;left:${at(p.tp)}%;top:-3px;width:3px;height:16px;background:var(--up)"></i>`:''}<i style="position:absolute;left:calc(${at(p.px)}% - 5px);top:0;width:10px;height:10px;border-radius:50%;background:var(--acc)"></i></div>
+  <div class="sm mut" style="display:flex;justify-content:space-between"><span>${p.sl>0?'Stop '+p.sl:'senza stop'}</span><span>Entrata ${p.open}</span><span>${p.tp>0?'Obiettivo '+p.tp:'stop mobile'}</span></div></div>`}
+function renderAcct(){const sec=$('#acsec');if(!AC){sec.hidden=true;return}sec.hidden=false;const a=AC,old=a.age>12e4;
+  $('#acage').textContent=old?'· dati fermi da '+Math.round(a.age/6e4)+' min: il robot è spento o MT5 è chiuso':'· in diretta';
+  const bar=(l,v,lim,col)=>{const p=Math.max(0,Math.min(1,lim?v/lim:0))*100;return `<div class="vr"><span>${l}</span><span class="bar one"><i style="background:var(--${col});left:0;width:${p}%"></i></span><b class="num">${Math.round(p)}%</b></div>`};
+  const f=x=>(x>=0?'+':'')+x.toFixed(2);
+  $('#ac').innerHTML=`<p class="sm mut" style="margin:0 0 8px">Conto …${esc(a.login.replace('…',''))} · ${esc(a.company||a.server)} · ${esc(a.phaseName)} · leva 1:${a.lev} · robot v${esc(a.ver)}</p>
+  <div class="kpi"><div><dt>Saldo</dt><dd>${a.bal.toFixed(2)} ${esc(a.cur)}</dd></div><div><dt>Equity</dt><dd>${a.eq.toFixed(2)}</dd></div><div><dt>Profitto aperto</dt><dd class="${a.prof>=0?'up':'dn'}">${f(a.prof)}</dd></div><div><dt>Dall'inizio</dt><dd class="${a.pnl>=0?'up':'dn'}">${f(a.pnl)}</dd></div></div>
+  ${bar('Perdita oggi',a.dayLoss,a.dayLimit,'dn')}<p class="vn">${a.dayLoss.toFixed(2)} su ${a.dayLimit.toFixed(2)} consentiti (5% del saldo iniziale)</p>
+  ${bar('Perdita totale',a.totLoss,a.maxLimit,'dn')}<p class="vn">${a.totLoss.toFixed(2)} su ${a.maxLimit.toFixed(2)} consentiti (10%)</p>
+  ${a.target?bar('Obiettivo di profitto',Math.max(0,a.pnl),a.target,'up')+`<p class="vn">${f(a.pnl)} su ${a.target.toFixed(2)}</p>`:'<p class="vn">Conto finanziato: nessun obiettivo, solo i limiti di perdita.</p>'}
+  <p class="sm" style="margin:6px 0">${a.guard?'<b class="dn">Guardia del robot: '+esc(a.guard)+'</b>':'<span class="up">Nessun freno attivo.</span>'}</p>
+  <h3 style="margin:12px 0 6px;font-size:14px">Posizioni aperte (${a.pos.length})</h3>${a.pos.length?a.pos.map(posBar).join(''):'<div class="empty">Nessuna posizione aperta.</div>'}
+  <details class="why"><summary>Ultime ${a.deals.length} chiusure</summary><div class="tw tall"><table><thead><tr><th>Quando</th><th>Mercato</th><th>Lato</th><th>Risultato</th></tr></thead><tbody>${a.deals.map(d=>`<tr><td>${new Date(d.time).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</td><td>${esc(d.sym)}</td><td>${d.type===1?'compra':'vendi'}</td><td class="num ${d.prof+d.comm+d.swap>=0?'up':'dn'}">${f(d.prof+d.comm+d.swap)}</td></tr>`).join('')||'<tr><td colspan="4" class="empty">Nessuna chiusura</td></tr>'}</tbody></table></div></details>`}
+function renderInv(){renderSat();renderGoal();renderAdv();renderEtf();renderStocks();renderAvoid();renderLt();renderBrokers();renderMa();if(!$('#p_hold').children.length||!$('#p_hold').querySelector('input'))renderHold((PR&&PR.hold)||{});renderCalcOpts();renderPlan()}
 async function loadInv(){try{const c=new AbortController(),tm=setTimeout(()=>c.abort(),15000);const r=await fetch(INV_API,{signal:c.signal,cache:'no-store'});clearTimeout(tm);if(!r.ok)throw new Error('server '+r.status);IV=await r.json();renderInv()}catch(e){$('#stocks').innerHTML='<div class="empty">Dati investimenti non raggiungibili ('+esc(e.message)+'). Riprovo tra poco.</div>'}}
 function showTab(t){TAB=t;LS.set('tab',t);$('#tab-trading').hidden=t!='trading';$('#tab-inv').hidden=t!='investimenti';document.querySelectorAll('.tr-only').forEach(x=>x.hidden=t!='trading');document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab==t));if(t=='investimenti'){calc()}else draw()}
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
@@ -583,7 +619,7 @@ $('#bsound').onclick=()=>{snd=!snd;if(snd){try{actx=actx||new (window.AudioConte
 for(const id of ['cap','risk']){const el=$('#'+id),sv=LS.get(id,null);if(sv!=null)el.value=sv;el.onchange=()=>{LS.set(id,el.value);render()}}
 window.addEventListener('resize',()=>{if(TAB=='investimenti')calc();else draw()});
 setInterval(()=>{next--;if(next<=0){next=60;scan()}$('#cd').textContent=Math.max(0,next)},1000);
-setInterval(livePx,15000);
+setInterval(livePx,15000);loadAcct();setInterval(loadAcct,30000);loadNews();setInterval(loadNews,3e5);
 render();scan();showTab(TAB);loadInv().then(()=>{if(LS.get('pin','')&&!PR)loadPlan()});setInterval(loadInv,6e5);
 </script>
 </body>
