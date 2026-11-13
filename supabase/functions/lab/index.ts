@@ -59,6 +59,12 @@ function maSig(K,i,F,M,S,name){
   if(up&&c>S[i]&&M[i]>S[i])return{s:name,dir:1,R:3*K.atr[i]};
   if(dn&&c<S[i]&&M[i]<S[i])return{s:name,dir:-1,R:3*K.atr[i]};
   return null}
+// ma2: entra quando la 21 e la 50 superano entrambe la 200 (l'ultima delle due la incrocia oggi); la 200 fa da stop mobile.
+function ma2Sig(K,i){
+  const a=K.e21,b=K.e50,s=K.e200,c=K.c[i];if(!(s[i]>0)||!(s[i-1]>0))return null;
+  const up=a[i]>s[i]&&b[i]>s[i]&&!(a[i-1]>s[i-1]&&b[i-1]>s[i-1]),dn=a[i]<s[i]&&b[i]<s[i]&&!(a[i-1]<s[i-1]&&b[i-1]<s[i-1]);
+  const R=Math.abs(c-s[i]);if(!(R>0)||R>6*K.atr[i]||R<.3*K.atr[i])return null;
+  if(up&&c>s[i])return{s:'ma2',dir:1,R};if(dn&&c<s[i])return{s:'ma2',dir:-1,R};return null}
 function signals(K,i){
   const o=[],a=analyze(K,i);if(a)o.push(a);
   const c=K.c[i],atr=K.atr[i],R=2*atr,e2=K.e200[i],e5=K.e50[i];
@@ -67,14 +73,17 @@ function signals(K,i){
   if(c>e2&&K.rsi2[i]<10)o.push({s:'rsi2',dir:1,R:2.5*atr});else if(c<e2&&K.rsi2[i]>90)o.push({s:'rsi2',dir:-1,R:2.5*atr});
   const m1=maSig(K,i,K.e21,K.e50,K.e200,'ma');if(m1)o.push(m1);
   const m2=maSig(K,i,K.s21,K.s50,K.s200,'mas');if(m2)o.push(m2);
+  const m3=ma2Sig(K,i);if(m3)o.push(m3);
   return o}
-const EXITS={rsi2:['M'],ma:['X','C','D'],mas:['X','C','D']};
+const EXITS={rsi2:['M'],ma:['X','C','D'],mas:['X','C','D'],ma2:['E']};
 function sim(K,j0,d,E,R,x,s){
   const n=K.c.length;let stop=E-d*R,best=E,stage=0;const tp=x=='B'?E+d*3*R:null,tr=x=='C'?1.5:2.5;
   const F=s=='mas'?K.s21:K.e21,M=s=='mas'?K.s50:K.e50;
   for(let j=j0;j<n;j++){
     const hi=K.h[j],lo=K.l[j],op=K.o[j];
+    if(x=='E'&&j>j0)stop=K.e200[j-1];
     if(d>0?lo<=stop:hi>=stop){const f=j>j0?(d>0?Math.min(stop,op):Math.max(stop,op)):stop;return{r:d*(f-E)/R,j}}
+    if(x=='E'){if(d*(K.e21[j]-K.e200[j])<0&&d*(K.e50[j]-K.e200[j])<0)return{r:d*(K.c[j]-E)/R,j};continue}
     if(x=='M'){if(d*(K.c[j]-K.s5[j])>0||j-j0>=9)return{r:d*(K.c[j]-E)/R,j};continue}
     // uscita a medie: la 21 torna dall'altra parte della 50 (chiusura della candela)
     if(x=='X'){if(d*(F[j]-M[j])<0)return{r:d*(K.c[j]-E)/R,j};continue}
