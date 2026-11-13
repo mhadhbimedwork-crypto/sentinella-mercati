@@ -109,7 +109,7 @@ async function histY(sym,p1=1262304000){
     return out.slice(0,-1)}catch(e){err=e;await new Promise(r=>setTimeout(r,800*(k+1)))}}}
   throw err}
 function run(K,tf,dT,dS,cost,hc,only){
-  const n=K.c.length,ms=MS[tf],res={},busy={},split=K.t[Math.floor(260+(n-260)*.6)];let dk=0;
+  const n=K.c.length,ms=MS[tf],res={},TR={},busy={},split=K.t[Math.floor(260+(n-260)*.6)];let dk=0;
   for(let i=260;i<n-2;i++){
     let sg=signals(K,i);if(only)sg=sg.filter(s=>only.includes(s.s));if(!sg.length)continue;
     let dtr;
@@ -120,8 +120,8 @@ function run(K,tf,dT,dS,cost,hc,only){
       for(const x of EXITS[s.s]||['B','C','D']){const key=s.s+'|'+x+'|'+(s.dir>0?'L':'S');if((busy[key]??-1)>=i)continue;
         const o=sim(K,i+1,s.dir,E,s.R,x,s.s);busy[key]=o.j;
         const days=(K.t[o.j]-K.t[i+1])/864e5+ms/864e5,r=o.r-(cost+hc*days)*E/s.R,k2=key+'|'+(K.t[i]<split?'is':'oos');
-        const a=(res[k2]??={n:0,w:0,r:0,r2:0,days:0});a.n++;if(r>0)a.w++;a.r+=r;a.r2+=r*r;a.days+=days}}}
-  return res}
+        (TR[key]??=[]).push([K.t[i+1],Math.round(r*1000)/1000]);const a=(res[k2]??={n:0,w:0,r:0,r2:0,days:0});a.n++;if(r>0)a.w++;a.r+=r;a.r2+=r*r;a.days+=days}}}
+  res.__tr=TR;return res}
 function effRatio(c){let s=0,k=0;for(let i=260;i<c.length;i+=5){let p=0;for(let j=i-19;j<=i;j++)p+=Math.abs(c[j]-c[j-1]);if(p>0){s+=Math.abs(c[i]-c[i-20])/p;k++}}return k?s/k:0}
 // Prova di lungo periodo su indice: equity giornaliera con segnale alla chiusura e posizione dal giorno dopo.
 function longTerm(raw,cost){
@@ -152,8 +152,9 @@ Deno.serve(async req=>{
     if(src=='y')raw=await histY(sym);
     else{raw=await histB(sym,tf,n);if(tf!='1d'){const rd=await histB(sym,'1d',3000),dc=rd.map(r=>+r[4]),de=ema(dc,200);dT=rd.map(r=>+r[0]);dS=dc.map((c,i)=>i<200?0:Math.sign(c-de[i]))}}
     if(raw.length<600)throw new Error('storia troppo corta: '+raw.length);
-    const K=prep(raw),res=run(K,tf,dT,dS,cost,hc,only),t0=new Date(K.t[0]).toISOString(),now=new Date().toISOString();
+    const K=prep(raw),res=run(K,tf,dT,dS,cost,hc,only),TRD=res.__tr;delete res.__tr;const t0=new Date(K.t[0]).toISOString(),now=new Date().toISOString();
     const rows=Object.entries(res).map(([k,s])=>{const [strat,exitm,side,seg]=k.split('|');return{sym,cls,tf,strat,exitm,side,seg,n:s.n,w:s.w,r:s.r,r2:s.r2,days:s.days,candles:K.c.length,t0,updated_at:now}});
+    if(body.tr){const tr=Object.entries(TRD).map(([k,v])=>{const [strat,exitm,side]=k.split('|');return{sym,cls,tf,strat,exitm,side,trades:v,updated_at:now}});await sb.from('lab_tr').delete().eq('sym',sym).eq('tf',tf);if(tr.length){const q=await sb.from('lab_tr').insert(tr);if(q.error)throw new Error(q.error.message)}}
     let del=sb.from('lab2').delete().eq('sym',sym).eq('tf',tf);if(only)del=del.in('strat',only);await del;
     if(rows.length){const ins=await sb.from('lab2').insert(rows);if(ins.error)throw new Error(ins.error.message)}
     if(tf=='1d'&&!only){const up=await sb.from('mkt').upsert({sym,cls,src,er:effRatio(K.c),candles:K.c.length,t0,updated_at:now});if(up.error)throw new Error(up.error.message)}
