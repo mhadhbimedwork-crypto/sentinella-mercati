@@ -80,5 +80,47 @@ sh('Registro',['Test','Cosa','Dove','Esito'],[
  ['T19','Senza il mercato migliore','Fase 2',''],['T20','Ingresso in ritardo di una barra','Fase 2',''],
  ['Prima','Test precedenti sul server (laboratorio, ottimizzazione 1 e 2)','Messaggi in chat','Coerenti: solo le rotture in acquisto reggono']],{2:90,3:16,4:60})
 sh('Dati usati',['Serie scaricate'],[[l] for l in D['log']],{1:60})
-wb.save('risultati/RISULTATI_TEST.xlsx')
+
+# ---------- giro 3 ----------
+import os
+if os.path.exists('risultati/backtest2.json'):
+    D2=json.load(open('risultati/backtest2.json'))
+    REG={'n':'nessuno','breadth':'almeno metà dei mercati sopra la EMA 200','leader':'mercato guida sopra la EMA 200'}
+    def d3(f):
+        b=desc({'fam':f['fam'],'par':f['par'],'sd':f['sd'],'td':f['td']})
+        ex=[]
+        if f['reg']!='n': ex.append('Semaforo: si entra solo con '+REG[f['reg']])
+        if f['rs']: ex.append('solo i mercati più forti della mediana a 90 barre')
+        if f['be']: ex.append('stop a pareggio dopo +2R')
+        if f['ts']: ex.append('si esce se dopo 10 barre il guadagno è sotto 0,5R')
+        return b+(' '+'; '.join(ex)+'.' if ex else '')
+    rows=[]
+    for g in D2['groups']:
+        f=g['scelta']
+        if not f: continue
+        b=f['base']
+        rows.append([f"{g['cls'].capitalize()} {g['tf']}",f['name'],d3(f),f"{g['from']} - {g['to']}",f['all']['n'],pc(f['all']['wr']),D2['cap'],f['all']['eq'],pc(f['all']['cagr']),pc(f['all']['dd']),pc(f['is']['cagr']),pc(f['oos']['cagr']),pc(f['oos']['dd']),pc(f['costiDoppi']['cagr']),pc(f['ritardo']['cagr']),f"{f['vicini']['pos']}/{f['vicini']['n']}",f['senzaMigliore']['tolto'],pc(f['senzaMigliore']['cagr']),pc(b['all']['cagr']),pc(b['all']['dd'])])
+    ws=sh('Giro 3 - scelte finali',['Mercato','Strategia','Come è impostata','Periodo','Operazioni','Vinte %','Capitale iniziale €','Capitale finale € (rischio 1%)','Rend. annuo %','Calo max %','Rend. scelta %','Rend. mai visto %','Calo mai visto %','Mai visto costi doppi %','Mai visto 1 barra di ritardo %','Parametri vicini positivi','Mercato tolto','Rend. senza il migliore %','Prima dei miglioramenti: rend. %','Prima dei miglioramenti: calo %'],rows,{1:16,2:28,3:80,4:24})
+    for r in ws.iter_rows(min_row=2):
+        for c in r: c.alignment=Alignment(wrap_text=True,vertical="top")
+    rows=[]
+    for g in D2['groups']:
+        for e in g['effects']:
+            for v in e['vals']:
+                lab=REG.get(v['v'],{'0':'no','1':'sì','2':'sì','10':'sì'}.get(v['v'],v['v']))
+                rows.append([g['cls'],g['tf'],e['name'],lab,pc(v['cagrOos']),pc(v['ddOos']),v['scoreOos'],v['scoreIs'],pc(v['positivi'])])
+    sh('Giro 3 - miglioramenti',['Mercati','TF','Miglioramento','Valore','Rend. annuo medio mai visto %','Calo medio mai visto %','Rendimento/calo mai visto','Rendimento/calo scelta','Combinazioni positive mai visto %'],rows,{3:28,4:40})
+    rows=[]
+    for g in D2['groups']:
+        for f in g['finals']:
+            rows.append([g['cls'],g['tf'],f['name'],par(f),f['sd'],f['td'],'sì' if f['be'] else 'no','sì' if f['ts'] else 'no',REG[f['reg']],'sì' if f['rs'] else 'no',f['all']['n'],f['all']['eq'],pc(f['all']['cagr']),pc(f['all']['dd']),pc(f['is']['cagr']),pc(f['oos']['cagr']),pc(f['oos']['dd']),pc(f['costiDoppi']['cagr']),pc(f['ritardo']['cagr']),pc(f['senzaMigliore']['cagr'])])
+    sh('Giro 3 - finalisti',['Mercati','TF','Strategia','Parametri','Stop ATR','Stop mobile ATR','Pareggio +2R','Uscita a tempo','Semaforo','Forza relativa','Operazioni','Capitale finale €','Rend. annuo %','Calo max %','Rend. scelta %','Rend. mai visto %','Calo mai visto %','Costi doppi %','Ritardo 1 barra %','Senza il migliore %'],rows,{3:34,4:20,9:38})
+    u=D2.get('unito')
+    if u:
+        ys=sorted({y for x in u['scan'] for y in x['byYear']})
+        rows=[[x['risk']*100,x['eq'],pc(x['cagr']),pc(x['dd']),pc(x['cagrOos']),pc(x['ddOos']),pc(x['cagrX2']),x['n']]+[x['byYear'].get(y) for y in ys] for x in u['scan']]
+        ws=sh('Portafoglio unito',['Rischio per operazione %','Capitale finale €','Rend. annuo %','Calo max %','Rend. annuo mai visto %','Calo mai visto %','Rend. annuo con costi doppi %','Operazioni']+[f'Capitale fine {y} €' for y in ys],rows)
+        ws.append([]);ws.append([f"Portafoglio: {', '.join(u['parti'])} insieme, {u['from']} - {u['to']}, capitale iniziale 10.000 €, massimo 10 posizioni aperte."])
+        ws.append([f"Per FTMO (calo entro 8%): rischio {u['perFtmo']['risk']*100}% per operazione. Per capitale proprio (calo entro 25%): rischio {u['perCapitaleProprio']['risk']*100}%."])
+    wb.save('risultati/RISULTATI_TEST.xlsx')
 for g,f in fin3: print(g['cls'],g['tf'],f['name'],f['par'],f['sd'],f['td'],f['all'],'oos',f['oos'],'x2',f['t14_costiDoppi']['oos']['cagr'],'r05',f['t17_rischio'][0])
