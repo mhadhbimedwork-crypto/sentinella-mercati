@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#0e1420">
+<title>Sentinella Mercati</title>
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+/* Layout: banda di controllo in alto, poi colonna segnali (larga) + colonna agenti/diario; tutto impilato su telefono */
+:root{--bg:#0e1420;--panel:#151d2c;--line:#263148;--fg:#e6ebf5;--mut:#8c9ab3;--acc:#e0a63a;--up:#3fbf8f;--dn:#ef6a6a;color-scheme:dark;
+--sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+@media (prefers-color-scheme:light){:root{--bg:#f2f4f8;--panel:#fff;--line:#d6dce8;--fg:#131a28;--mut:#5b6880;--acc:#9a6200;--up:#0d8559;--dn:#c23a3a;color-scheme:light}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 var(--sans);padding:16px max(16px,env(safe-area-inset-right,0px)) 40px max(16px,env(safe-area-inset-left,0px))}
+h1{font-size:20px;margin:0;letter-spacing:.2px}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--mut);margin:0 0 10px;font-weight:600}
+.top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:end;margin-bottom:16px}
+.top .grow{flex:1;min-width:200px}
+.st{color:var(--mut);font-size:12px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--mut);margin-right:6px}
+.dot.on{background:var(--up)}.dot.err{background:var(--dn)}
+label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--mut)}
+input,button{font:inherit;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+input{width:120px;font-family:var(--mono)}
+button{cursor:pointer}button:hover{border-color:var(--acc)}
+button.pri{background:var(--acc);color:#14100a;border-color:var(--acc);font-weight:600}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.mut{color:var(--mut)}.sm{font-size:12px}.up{color:var(--up)}.dn{color:var(--dn)}
+.num,dd,td,input{font-variant-numeric:tabular-nums}
+.sig{border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px}
+.sig header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.sig header b{font-size:16px}
+.pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;border:1px solid currentColor}
+.lv{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px 14px;margin:0 0 12px}
+.lv dt{font-size:11px;color:var(--mut)}.lv dd{margin:0;font-family:var(--mono);font-size:14px}
+.prog{position:relative;height:8px;background:var(--bg);border-radius:4px;overflow:hidden}
+.prog i{position:absolute;top:0;bottom:0}.prog i.up{background:var(--up)}.prog i.dn{background:var(--dn)}
+.prog::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--mut)}
+.jr{display:grid;grid-template-columns:120px 1fr 34px;gap:8px;align-items:center;margin-top:8px}
+.jr .bar,.vr .bar{height:8px;background:var(--bg);border-radius:4px;position:relative;overflow:hidden}
+.jr .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--acc);transition:width .6s}
+.jn{grid-column:1/-1;font-size:12px;color:var(--mut);margin-top:-4px}
+.rel{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.rel b{font:700 22px var(--mono);color:var(--acc)}
+.vr{display:grid;grid-template-columns:130px 1fr 44px;gap:8px;align-items:center;margin-bottom:4px}
+.vr .bar i{position:absolute;top:0;bottom:0}
+.vr .bar.one::after{display:none}
+.advice{border-radius:8px;padding:10px 12px;margin:0 0 12px;font-weight:600;border:1px solid currentColor}
+.advice small{display:block;font-weight:400;color:var(--fg);opacity:.85;margin-top:3px}
+.advice.up{color:var(--up)}.advice.acc{color:var(--acc)}.advice.dn{color:var(--dn)}
+.mt{position:relative;height:10px;background:var(--bg);border-radius:5px;margin:16px 0 6px}
+.mt .mk{position:absolute;top:-3px;width:3px;height:16px;border-radius:1px;transform:translateX(-1px)}
+.mt .px{position:absolute;top:-5px;width:10px;height:20px;border-radius:3px;background:var(--fg);transform:translateX(-5px)}
+.ends{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--mut);margin-bottom:10px}
+.tkt{background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.tkt h3{margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);font-weight:600}
+.tkt .lv{margin:0}
+details.why summary{cursor:pointer;font-weight:600;margin:6px 0}
+details.why p,details.why li{font-size:12px;color:var(--mut);margin:3px 0}
+details.why ul{padding-left:18px;margin:4px 0 8px}
+.vr .bar::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--mut)}
+.vn{font-size:12px;color:var(--mut);margin:0 0 10px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-size:11px;color:var(--mut);font-weight:600;padding:4px 8px 6px 0;white-space:nowrap}
+td{padding:6px 8px 6px 0;border-top:1px solid var(--line);vertical-align:top}
+tr.pick{cursor:pointer}tr.pick:hover td{color:var(--acc)}
+canvas{width:100%;height:260px;display:block}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.tabs button{padding:3px 9px;font-size:12px}.tabs button.on{border-color:var(--acc);color:var(--acc)}
+#log{max-height:220px;overflow:auto;font-size:12px;display:flex;flex-direction:column;gap:5px}
+#log time{color:var(--mut);font-family:var(--mono);margin-right:6px}
+:root{--c1:#5b8def;--c2:#3fbf8f;--c3:#e0a63a;--c4:#b07ae0;--c5:#ef6a6a;--c6:#8c9ab3}
+@media (prefers-color-scheme:light){:root{--c1:#2f62c9;--c2:#0d8559;--c3:#9a6200;--c4:#7a3fb0;--c5:#c23a3a;--c6:#5b6880}}
+.nav{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+.nav button{font-weight:600;padding:8px 16px}.nav button.on{background:var(--acc);color:#14100a;border-color:var(--acc)}
+.frm{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+.frm input,.frm select{width:100%}
+select{font:inherit;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;max-width:100%}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:10px 0}
+.kpi>div{background:var(--bg);border-radius:8px;padding:10px;min-width:0}
+.kpi dt{font-size:11px;color:var(--mut)}.kpi dd{margin:2px 0 0;font:700 18px var(--mono);overflow-wrap:anywhere}
+.rng{position:relative;height:6px;background:var(--bg);border-radius:3px;margin:10px 0 4px}
+.rng i{position:absolute;top:-4px;width:3px;height:14px;border-radius:1px;transform:translateX(-1px)}
+.rng b{position:absolute;top:-6px;width:10px;height:18px;border-radius:3px;background:var(--fg);transform:translateX(-5px)}
+.rngl{display:flex;justify-content:space-between;gap:6px;font-size:11px;color:var(--mut)}
+.stk{display:flex;height:12px;border-radius:4px;overflow:hidden;background:var(--bg);margin:6px 0}
+.stk i{display:block;height:100%}
+.leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11px;color:var(--mut)}.leg span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;background:var(--c)}
+.stock{border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px}
+.stock header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
+ul.pos,ul.neg{margin:6px 0;padding-left:18px;font-size:12px}ul.pos li::marker{color:var(--up)}ul.neg li::marker{color:var(--dn)}
+.yb{display:grid;grid-template-columns:44px 1fr 60px;gap:6px;align-items:center;font-size:12px;margin:3px 0}
+.yb .bar{height:8px;background:var(--bg);border-radius:4px;position:relative;overflow:hidden}
+.yb .bar i{position:absolute;top:0;bottom:0}.yb .bar::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--mut)}
+.tall{max-height:440px;overflow:auto}
+.note{background:var(--bg);border-left:3px solid var(--acc);border-radius:6px;padding:10px 12px;margin:10px 0;font-size:13px}
+.brk{border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px}
+.brk header{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
+.chk2{display:flex;gap:8px;align-items:center;flex-direction:row;font-size:13px;color:var(--fg)}.chk2 input{width:auto}
+.hold{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+.hold input{width:100%}
+a{color:var(--acc)}
+.chk{display:flex;gap:8px;margin:6px 0}.chk b{flex:none;width:18px}
+.verd{font-weight:700;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.empty{color:var(--mut);padding:8px 0}
+.banner{background:var(--acc);color:#14100a;padding:10px 14px;border-radius:8px;margin-bottom:16px;font-weight:600}
+footer{color:var(--mut);font-size:12px;margin-top:20px;max-width:70ch}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<nav class="nav" aria-label="Aree"><button data-tab="trading" class="on">Trading</button><button data-tab="investimenti">Investimenti e ETF</button></nav>
+<div class="top">
+  <div class="grow"><h1>Sentinella Mercati</h1><div class="st"><span class="dot" id="dot"></span><span id="status">Avvio…</span> · prossimo aggiornamento tra <span id="cd" class="num">60</span>s</div></div>
+  <label for="cap" class="tr-only">Capitale ($)<input id="cap" type="number" min="10" step="10" value="1000"></label>
+  <label for="risk" class="tr-only">Rischio per operazione (%)<input id="risk" type="number" min="0.1" max="5" step="0.1" value="1"></label>
+  <button class="pri" id="bscan">Aggiorna</button>
+  <button id="bsound" class="tr-only">Attiva avvisi sonori</button>
+</div>
+<div id="demo" class="banner" style="background:var(--dn);color:#fff" hidden></div>
+<div id="banner" class="banner" hidden></div>
+<div id="tab-trading">
+<div class="grid">
+  <div class="col">
+    <section><h2>Operazioni segnalate</h2><div id="sigs"><div class="empty">Scansione dei mercati in corso…</div></div></section>
+    <section><h2>Grafico <span id="cht"></span></h2><div class="tabs" id="tfs"></div><canvas id="cv"></canvas><div class="sm mut" id="obk"></div></section>
+    <section><h2>Radar mercati</h2><div class="tw"><table><thead><tr><th>Mercato</th><th>TF migliore</th><th>Regime</th><th>Consenso</th><th>Stato</th></tr></thead><tbody id="radar"><tr><td colspan="5" class="empty">In attesa dei dati…</td></tr></tbody></table></div><p class="sm mut" id="mac" style="margin:8px 0 0"></p></section>
+    <section><h2>Laboratorio: cosa guadagna davvero</h2><p class="sm mut" style="margin:0 0 8px">Ogni strategia è provata su anni di dati con i costi inclusi, sommando tutti i mercati della classe. Resta accesa solo se è positiva sia nel periodo usato per sceglierla sia in quello mai visto.</p><div class="tw"><table><thead><tr><th>Mercati</th><th>TF</th><th>Strategia</th><th>Lato</th><th>Uscita</th><th>Casi</th><th>Scelta</th><th>Mai visto</th><th>Stato</th></tr></thead><tbody id="lab"><tr><td colspan="9" class="empty">In attesa dei dati…</td></tr></tbody></table></div><p class="sm mut" style="margin:8px 0 0">Valori in R netti per operazione (1R = il rischio dell'operazione). Uscite: B = obiettivo a +3R · C = stop mobile a 1,5R · D = stop mobile a 2,5R, si lascia correre. Per ogni classe sono mostrate le combinazioni accese e le due migliori tra quelle spente.</p></section>
+    <section><h2>Dove il trend funziona davvero</h2><p class="sm mut" style="margin:0 0 8px">Stessa prova su ogni mercato: comprare o vendere la rottura a 55 giorni nel senso del trend e lasciar correre, costi inclusi. Più è alto il valore, più quel mercato ha premiato chi segue il trend.</p><div class="tw"><table><thead><tr><th>Mercato</th><th>Classe</th><th>Casi</th><th>Resa per operazione</th><th>Stato</th></tr></thead><tbody id="rank"><tr><td colspan="5" class="empty">In attesa dei dati…</td></tr></tbody></table></div></section>
+    <section><h2>Medie mobili 21 / 50 / 200 alla prova</h2><p class="sm mut" style="margin:0 0 8px">Regola provata: si entra quando la media a 21 incrocia la 50 nel verso del trend lungo (prezzo e media 50 dallo stesso lato della 200). Uscite provate: X = si esce quando la 21 incrocia di nuovo la 50 · C e D = stop mobile. Costi e interessi inclusi, R netti per operazione.</p><div class="tw"><table><thead><tr><th>Mercati</th><th>TF</th><th>Medie</th><th>Lato</th><th>Uscita</th><th>Casi</th><th>Scelta</th><th>Mai visto</th><th>Giudizio</th></tr></thead><tbody id="matest"><tr><td colspan="9" class="empty">In attesa dei dati…</td></tr></tbody></table></div><div id="maverd"></div></section>
+  </div>
+  <div class="col">
+    <section id="ftsec" hidden><h2>Conto FTMO</h2><div id="ft"></div></section>
+    <section><h2>Tavolo degli agenti <span id="agt"></span></h2><div id="agents"><div class="empty">In attesa dei dati…</div></div></section>
+    <section><h2>Diario e file degli errori</h2><div id="stats"></div>
+            <div class="tw"><table><thead><tr><th>Data</th><th>Mercato</th><th>Esito</th><th>Lezione</th></tr></thead><tbody id="jr"></tbody></table></div></section>
+    <section><h2>Cronaca in diretta</h2><div id="log"></div></section>
+  </div>
+</div>
+</div>
+<div id="tab-inv" hidden>
+<section style="margin-bottom:16px"><h2>Obiettivo: libertà finanziaria</h2>
+  <p class="sm mut" style="margin:0 0 10px">Lo scopo dell'app: far crescere il tuo capitale fino a vivere di rendita, nel minor tempo possibile, con i numeri veri. Le tre leve sono quanto versi, quanto rende e il capitale di FTMO, che ti fa guadagnare su soldi non tuoi.</p>
+  <div class="frm">
+    <label for="g_goal">Obiettivo (€)<input id="g_goal" type="number" min="10000" step="10000" value="1000000"></label>
+    <label for="g_now">Capitale di partenza (€)<input id="g_now" type="number" min="0" step="100" value="0"></label>
+    <label for="g_dep">Versamento mensile (€)<input id="g_dep" type="number" min="0" step="10" value="300"></label>
+    <label for="g_inc">Aumento del versamento ogni anno (%)<input id="g_inc" type="number" min="0" max="30" step="1" value="3"></label>
+    <label for="g_ftmo">Conto FTMO finanziato<select id="g_ftmo"><option value="0">Nessuno</option><option value="10000">10.000</option><option value="25000">25.000</option><option value="50000">50.000</option><option value="100000">100.000</option><option value="200000">200.000</option></select></label>
+    <label for="g_years">Voglio arrivarci in (anni)<input id="g_years" type="number" min="1" max="50" step="1" value="15"></label>
+  </div>
+  <div id="goal"></div>
+</section>
+<div class="grid">
+  <div class="col">
+    <section><h2>Il tuo piano mensile</h2>
+      <p class="sm mut" style="margin:0 0 10px">Inserisci quanto metti ogni mese e cosa possiedi già. Il piano ti dice cosa comprare questo mese, quante quote e perché. I dati restano sul tuo server, protetti da un PIN che scegli tu.</p>
+      <div class="frm">
+        <label for="p_pin">PIN (4-8 cifre)<input id="p_pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off"></label>
+        <label for="p_m">Versamento mensile (€)<input id="p_m" type="number" min="0" step="10" value="300"></label>
+        <label for="p_h">Orizzonte (anni)<input id="p_h" type="number" min="0" max="60" step="1" value="15"></label>
+        <label for="p_r">Profilo<select id="p_r"><option value="prudente">Prudente</option><option value="bilanciato">Bilanciato</option><option value="dinamico" selected>Dinamico</option><option value="aggressivo">Aggressivo</option></select></label>
+        <label for="p_b">Broker<select id="p_b"><option value="fineco">Fineco</option><option value="scalable">Scalable Capital</option><option value="tr">Trade Republic</option><option value="directa">Directa</option></select></label>
+        <label for="p_cash">Liquidità già pronta da investire (€)<input id="p_cash" type="number" min="0" step="10" value="0"></label>
+      </div>
+      <label class="chk2"><input id="p_em" type="checkbox"> Ho già un fondo di emergenza (3-6 mesi di spese) fuori dagli investimenti</label>
+      <details class="why" style="margin-top:10px"><summary>Cosa possiedi già (numero di quote)</summary><div class="hold" id="p_hold"></div></details>
+      <div class="row" style="margin-top:12px"><button class="pri" id="p_save">Salva e calcola</button><button id="p_load">Carica il mio piano</button><span class="sm mut" id="p_msg"></span></div>
+      <div id="plan" style="margin-top:12px"></div>
+    </section>
+    <section><h2>Calcolatore interesse composto</h2>
+      <p class="sm mut" style="margin:0 0 10px">Come i calcolatori di capitalizzazione del forex, ma con i rendimenti veri: per ETF e azioni usa i risultati di tutti i periodi della loro storia, per le strategie di trading la resa misurata nel periodo mai visto del laboratorio.</p>
+      <div class="frm">
+        <label for="c_inst" style="grid-column:1/-1">Strumento<select id="c_inst"></select></label>
+        <label for="c_cap">Capitale iniziale (€)<input id="c_cap" type="number" min="0" step="100" value="1000"></label>
+        <label for="c_dep">Versamento mensile (€)<input id="c_dep" type="number" min="0" step="10" value="300"></label>
+        <label for="c_mo">Durata (mesi)<input id="c_mo" type="number" min="1" max="600" step="1" value="120"></label>
+        <label for="c_sc">Rendimento da usare<select id="c_sc"><option value="med">Mediano della storia</option><option value="p10">Prudente (9 periodi su 10 hanno fatto meglio)</option><option value="p90">Ottimista (1 periodo su 10 ha fatto meglio)</option><option value="min">Il periodo peggiore mai visto</option><option value="y10">Ultimi 10 anni</option><option value="y5">Ultimi 5 anni</option></select></label>
+        <label for="c_risk" id="c_riskl" hidden>Rischio per operazione (%)<input id="c_risk" type="number" min="0.1" max="3" step="0.1" value="0.5"></label>
+        <label for="c_pct" id="c_pctl" hidden>Rendimento al mese (%)<input id="c_pct" type="number" step="0.1" value="1"></label>
+      </div>
+      <label class="chk2"><input id="c_tax" type="checkbox" checked> Togli le tasse italiane sul guadagno (26%) e il bollo titoli (0,2% l'anno)</label>
+      <div id="calc" style="margin-top:10px"></div>
+      <canvas id="ccv" style="height:240px"></canvas>
+      <details class="why"><summary>Tabella mese per mese</summary><div class="tw tall"><table><thead><tr><th>Mese</th><th>Data</th><th>Versato</th><th>Guadagno del mese</th><th>Saldo</th><th>Guadagno totale</th></tr></thead><tbody id="ctab"></tbody></table></div></details>
+    </section>
+    <section><h2>ETF: i mattoni del portafoglio</h2>
+      <p class="sm mut" style="margin:0 0 8px">ETF UCITS quotati in Borsa Italiana (uno su Xetra), comprabili da un conto italiano. Rendimenti annui composti con dividendi reinvestiti. La barra mostra il prezzo tra minimo e massimo delle ultime 52 settimane; la tacca gialla è la media a 200 giorni. Tocca un ETF per usarlo nel calcolatore.</p>
+      <div class="tw"><table><thead><tr><th>ETF</th><th>TER</th><th>Fineco 0 €</th><th>1 anno</th><th>5 anni</th><th>10 anni</th><th>Peggior calo</th><th>Dal massimo</th></tr></thead><tbody id="etfs"><tr><td colspan="8" class="empty">In attesa dei dati…</td></tr></tbody></table></div>
+      <p class="sm mut" id="etfat" style="margin:8px 0 0"></p>
+    </section>
+  </div>
+  <div class="col">
+    <section><h2>Cosa evitare e perché</h2><div id="avoid"><div class="empty">In attesa dei dati…</div></div></section>
+    <section><h2>Comprare e tenere o seguire le medie?</h2><p class="sm mut" style="margin:0 0 8px">Prova su decenni di borsa: restare sempre investiti contro uscire quando il prezzo scende sotto le medie. Rendimento annuo composto e peggior calo dal massimo. Quando si è fuori la liquidità rende zero.</p><div class="tw"><table><thead><tr><th>Mercato</th><th>Anni</th><th>Sempre dentro</th><th>Media 200</th><th>Incrocio 50/200</th><th>21/50/200</th></tr></thead><tbody id="lt"></tbody></table></div><div id="ltverd"></div></section>
+    <section><h2>Azioni: bilanci ufficiali</h2><p class="sm mut" style="margin:0 0 8px">Numeri presi dai bilanci depositati alla SEC (l'autorità di borsa americana): ricavi, utili, cassa vera generata e dove l'azienda sposta i soldi. Aggiornati ogni sera.</p><div id="stocks"><div class="empty">In attesa dei dati…</div></div></section>
+    <section><h2>Dove investire: broker a confronto</h2><div id="brokers"><div class="empty">In attesa dei dati…</div></div></section>
+  </div>
+</div>
+</div>
+<footer>Il motore gira su un server 24 ore su 24: i mercati di trading ogni 5 minuti, ETF e bilanci ogni sera, anche ad app chiusa. Dati: Binance, Yahoo Finance, SEC EDGAR, Alternative.me, justETF e Fineco per costi e promozioni. Rendimenti passati e prove sullo storico non garantiscono quelli futuri.</footer>
+<script>
+/*ENGINE*/
+const cl=(x,a=-1,b=1)=>Math.max(a,Math.min(b,x));
+function ema(a,p){const k=2/(p+1),o=new Array(a.length);let e=a[0];for(let i=0;i<a.length;i++){e=i?a[i]*k+e*(1-k):a[0];o[i]=e}return o}
+function sma(a,p){const o=new Array(a.length).fill(NaN);let s=0;for(let i=0;i<a.length;i++){s+=a[i];if(i>=p)s-=a[i-p];if(i>=p-1)o[i]=s/p}return o}
+function wilder(a,p){const o=new Array(a.length).fill(NaN);let s=0;for(let i=0;i<a.length;i++){if(i<p){s+=a[i];if(i===p-1)o[i]=s/p}else o[i]=(o[i-1]*(p-1)+a[i])/p}return o}
+function rsi(c,p=14){const o=new Array(c.length).fill(50);let g=0,l=0;for(let i=1;i<c.length;i++){const d=c[i]-c[i-1],u=Math.max(d,0),w=Math.max(-d,0);if(i<=p){g+=u/p;l+=w/p}else{g=(g*(p-1)+u)/p;l=(l*(p-1)+w)/p}if(i>=p)o[i]=l===0?100:100-100/(1+g/l)}return o}
+function roll(a,p,f){const o=new Array(a.length).fill(NaN);for(let i=p-1;i<a.length;i++){let m=a[i];for(let j=i-p+1;j<i;j++)m=f(m,a[j]);o[i]=m}return o}
+function prep(raw){
+  const K={t:[],o:[],h:[],l:[],c:[],v:[],tb:[]};
+  for(const r of raw){K.t.push(+r[0]);K.o.push(+r[1]);K.h.push(+r[2]);K.l.push(+r[3]);K.c.push(+r[4]);K.v.push(+r[5]);K.tb.push(+r[9])}
+  const n=K.c.length,{h,l,c,v}=K,mx=Math.max,mn=Math.min;
+  K.e20=ema(c,20);K.e50=ema(c,50);K.e200=ema(c,200);K.rsi=rsi(c);
+  const tr=c.map((x,i)=>i?mx(h[i]-l[i],Math.abs(h[i]-c[i-1]),Math.abs(l[i]-c[i-1])):h[i]-l[i]);
+  K.atr=wilder(tr,14);
+  const pdm=c.map((x,i)=>{if(!i)return 0;const u=h[i]-h[i-1],d=l[i-1]-l[i];return u>d&&u>0?u:0}),mdm=c.map((x,i)=>{if(!i)return 0;const u=h[i]-h[i-1],d=l[i-1]-l[i];return d>u&&d>0?d:0});
+  const sp=wilder(pdm,14),sm=wilder(mdm,14);
+  K.adx=wilder(c.map((x,i)=>{const a=sp[i]/K.atr[i],b=sm[i]/K.atr[i];return a+b>0?100*Math.abs(a-b)/(a+b):0}),14);
+  const md=ema(c,12).map((x,i)=>x),m26=ema(c,26);for(let i=0;i<n;i++)md[i]-=m26[i];const sg=ema(md,9);K.mh=md.map((x,i)=>x-sg[i]);
+  const mid=p=>{const a=roll(h,p,(x,y)=>mx(x,y)),b=roll(l,p,(x,y)=>mn(x,y));return a.map((x,i)=>(x+b[i])/2)};
+  K.ten=mid(9);K.kij=mid(26);const b52=mid(52);
+  K.sa=c.map((x,i)=>i>=26?(K.ten[i-26]+K.kij[i-26])/2:NaN);K.sb=c.map((x,i)=>i>=26?b52[i-26]:NaN);
+  K.bbm=sma(c,20);K.bbu=[];K.bbl=[];
+  for(let i=0;i<n;i++){let s=0;if(i>=19){for(let j=i-19;j<=i;j++)s+=(c[j]-K.bbm[i])**2;s=Math.sqrt(s/20)}K.bbu[i]=K.bbm[i]+2*s;K.bbl[i]=K.bbm[i]-2*s}
+  const dh=roll(h,20,(x,y)=>mx(x,y)),dl=roll(l,20,(x,y)=>mn(x,y));K.dh=dh.map((x,i)=>i?dh[i-1]:NaN);K.dl=dl.map((x,i)=>i?dl[i-1]:NaN);
+  const vm=sma(v,20);K.vz=v.map((x,i)=>{if(i<19)return 0;let s=0;for(let j=i-19;j<=i;j++)s+=(v[j]-vm[i])**2;s=Math.sqrt(s/20);return s?(x-vm[i])/s:0});
+  K.sh=[];K.sl=[];
+  for(let i=3;i<n-3;i++){let a=1,b=1;for(let j=i-3;j<=i+3;j++){if(h[j]>h[i])a=0;if(l[j]<l[i])b=0}if(a)K.sh.push(i);if(b)K.sl.push(i)}
+  return K}
+function lastSw(a,i){const o=[];for(let k=a.length-1;k>=0&&o.length<2;k--)if(a[k]<=i-3)o.push(a[k]);return o}
+// I quattro agenti votano da -1 (vendere) a +1 (comprare); il consenso è la media pesata.
+function analyze(K,i,W,ob){
+  const c=K.c[i],atr=K.atr[i],N={trend:[],smc:[],mom:[],flow:[]};
+  let t=0;const top=Math.max(K.sa[i],K.sb[i]),bot=Math.min(K.sa[i],K.sb[i]);
+  if(c>K.e200[i]){t+=.4;N.trend.push('sopra EMA200')}else{t-=.4;N.trend.push('sotto EMA200')}
+  t+=K.e50[i]>K.e200[i]?.2:-.2;
+  if(c>top){t+=.3;N.trend.push('sopra la nuvola Ichimoku')}else if(c<bot){t-=.3;N.trend.push('sotto la nuvola Ichimoku')}else N.trend.push('dentro la nuvola');
+  t+=K.ten[i]>K.kij[i]?.1:-.1;
+  let s=0;const H=lastSw(K.sh,i),L=lastSw(K.sl,i);
+  if(H.length==2&&L.length==2){const hh=K.h[H[0]]>K.h[H[1]],hl=K.l[L[0]]>K.l[L[1]];if(hh&&hl){s+=.4;N.smc.push('struttura a massimi e minimi crescenti')}else if(!hh&&!hl){s-=.4;N.smc.push('struttura a massimi e minimi decrescenti')}else N.smc.push('struttura mista')}
+  for(let j=i;j>i-3;j--){if(L.length&&K.l[j]<K.l[L[0]]&&K.c[j]>K.l[L[0]]){s+=.4;N.smc.push('presa di liquidità sotto i minimi');break}if(H.length&&K.h[j]>K.h[H[0]]&&K.c[j]<K.h[H[0]]){s-=.4;N.smc.push('presa di liquidità sopra i massimi');break}}
+  for(let j=i;j>i-10;j--){if(K.l[j]>K.h[j-2]&&c>=K.h[j-2]){s+=.2;N.smc.push('vuoto di prezzo (FVG) rialzista');break}if(K.h[j]<K.l[j-2]&&c<=K.l[j-2]){s-=.2;N.smc.push('vuoto di prezzo (FVG) ribassista');break}}
+  let m=0;const r=K.rsi[i],mh=K.mh[i];
+  m+=r>55?.3:r<45?-.3:0;m+=mh>0&&mh>K.mh[i-1]?.4:mh<0&&mh<K.mh[i-1]?-.4:0;m+=r<30?.3:r>70?-.3:0;
+  N.mom.push('RSI '+r.toFixed(0),mh>0?'MACD positivo':'MACD negativo');
+  let dv=0,tv=0;for(let j=i-19;j<=i;j++){dv+=2*K.tb[j]-K.v[j];tv+=K.v[j]}
+  let f=tv?cl(dv/tv*6):0;N.flow.push('delta volumi '+(tv?(dv/tv*100).toFixed(1):'0')+'%');
+  if(ob!=null){f=cl(f*.6+ob*.8);N.flow.push('book '+(ob>0?'+':'')+(ob*100).toFixed(0)+'% lato '+(ob>0?'acquisti':'vendite'))}
+  const votes={trend:cl(t),smc:cl(s),mom:cl(m),flow:f};
+  let cons=0,ws=0;for(const k in votes){cons+=W[k]*votes[k];ws+=W[k]}cons/=ws;
+  const adx=K.adx[i],regime=adx>=25?'trend':adx<18?'laterale':'transizione';
+  const pump=(K.h[i]-K.l[i])>3*atr&&K.vz[i]>3?Math.sign(K.c[i]-K.o[i]):0;
+  let dir=0,strat;
+  if(regime=='trend'){strat='Rientro in trend · EMA200 + Ichimoku + Smart Money';if(Math.abs(cons)>=.35&&Math.sign(votes.trend)==Math.sign(cons)&&Math.abs(c-K.e20[i])<=1.2*atr)dir=Math.sign(cons)}
+  else if(regime=='laterale'){strat='Ritorno alla media · RSI + Bollinger';if(c<K.bbl[i]&&r<32)dir=1;else if(c>K.bbu[i]&&r>68)dir=-1}
+  else{strat='Rottura Donchian con volume';if(c>K.dh[i]&&K.vz[i]>1)dir=1;else if(c<K.dl[i]&&K.vz[i]>1)dir=-1}
+  let sl=NaN;
+  if(dir){let d=1.5*atr;if(regime=='trend'){const sw=dir>0?(L.length?K.l[L[0]]:NaN):(H.length?K.h[H[0]]:NaN),ds=(dir>0?c-sw:sw-c)+.3*atr;if(isFinite(ds)&&ds>0)d=cl(ds,atr,3*atr)}sl=c-dir*d}
+  return{c,atr,votes,cons,regime,strat,dir,sl,pump,notes:N,adx,rsi:r,vz:K.vz[i]}}
+// Autocritica: la stessa regola viene rigiocata su tutto lo storico caricato prima di fidarsi.
+function backtest(K,W){let n=0,w=0,R=0,busy=-1;const e=K.c.length-1;
+  for(let i=220;i<e-1;i++){if(i<=busy)continue;const a=analyze(K,i,W,null);if(!a.dir)continue;
+    const d=Math.abs(a.c-a.sl),tp=a.c+a.dir*1.5*d;let res=null,j=i+1;
+    for(;j<e;j++){const S=a.dir>0?K.l[j]<=a.sl:K.h[j]>=a.sl,T=a.dir>0?K.h[j]>=tp:K.l[j]<=tp;if(S){res=-1;break}if(T){res=1.5;break}}
+    if(res==null)break;n++;if(res>0)w++;R+=res;busy=j}
+  return{n,wr:n?w/n:0,exp:n?R/n:0}}
+// I tre giudici: tecnico, rischio, storico. Voto 0-10 ciascuno.
+function judge(a,bt,htf,x){
+  const nt={T:[],R:[],S:[]},agree=Object.values(a.votes).filter(v=>Math.sign(v)==a.dir).length/4;
+  const str=a.regime=='trend'?Math.min(1,Math.abs(a.cons)/.6):a.regime=='laterale'?Math.min(1,Math.abs(a.rsi-50)/25):Math.min(1,a.vz/3);
+  let T=10*(str*.6+agree*.4);nt.T.push(Math.round(agree*4)+' agenti su 4 d\'accordo');
+  if(htf){if(Math.sign(htf)==a.dir){T+=1;nt.T.push('time frame superiore allineato')}else{T-=2.5;nt.T.push('time frame superiore contrario')}}
+  let R=10;const sp=Math.abs(a.c-a.sl)/a.c*100;
+  if(sp>4){R-=2;nt.R.push('stop largo ('+sp.toFixed(1)+'%)')}
+  if(x.fng!=null){if(x.fng>=80&&a.dir>0){R-=1.5;nt.R.push('avidità estrema sul mercato')}if(x.fng<=20&&a.dir<0){R-=1.5;nt.R.push('paura estrema sul mercato')}}
+  if(x.fund!=null){if(x.fund>.05&&a.dir>0){R-=1;nt.R.push('troppi long a leva (funding alto)')}if(x.fund<-.05&&a.dir<0){R-=1;nt.R.push('troppi short a leva')}}
+  if(x.lev>5){R-=1.5;nt.R.push('servirebbe leva '+x.lev.toFixed(1)+'x')}
+  if(a.pump&&a.pump==a.dir){R=0;nt.R.push('VETO: prezzo gonfiato in una candela, non si insegue')}
+  if(!nt.R.length)nt.R.push('rischio nei limiti, premio 1,5 e 3 volte il rischio');
+  let S=5;
+  if(bt.n>=8){S=5+bt.exp*8;nt.S.push(bt.n+' casi nello storico, '+Math.round(bt.wr*100)+'% vinti, resa media '+(bt.exp>=0?'+':'')+bt.exp.toFixed(2)+'R')}else nt.S.push('pochi casi nello storico ('+bt.n+'): voto neutro');
+  if(x.sim>=2){S-=1.5;nt.S.push('file errori: '+x.sim+' perdite in condizioni uguali')}
+  T=cl(T,0,10);R=cl(R,0,10);S=cl(S,0,10);const avg=(T+R+S)/3;
+  return{T,R,S,avg,pass:avg>=6.5&&Math.min(T,R,S)>=4,nt}}
+/*UI*/
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const LS={get(k,d){try{const v=JSON.parse(localStorage.getItem('sm_'+k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem('sm_'+k,JSON.stringify(v))}catch(e){}}};
+const SYMS=[['BTCUSDT','Bitcoin'],['ETHUSDT','Ethereum'],['SOLUSDT','Solana'],['BNBUSDT','BNB'],['XRPUSDT','XRP'],['PAXGUSDT','Oro (PAXG)']];
+const TFS=['4h','1d'],BASES=['https://data-api.binance.vision','https://api.binance.com'];
+const AG={trend:'Agente Trend',smc:'Agente Smart Money',mom:'Agente Momentum',flow:'Agente Flussi'};
+let W=LS.get('w',{trend:1.2,smc:1,mom:.8,flow:.8}),J=LS.get('j',[]),D={},SEL=LS.get('sel',{sym:'BTCUSDT',tf:'1d'}),CTX={fng:null,fund:{},ob:{},lab:[],rank:[],macro:null,rm:1},LOG=[],RADAR=[],busy=false,next=60,snd=false,actx=null;
+const fp=p=>p>=1000?p.toFixed(1):p>=10?p.toFixed(2):p>=1?p.toFixed(3):p.toFixed(4);
+const hm=t=>{const d=new Date(t),o={hour:'2-digit',minute:'2-digit'};return d.toDateString()==new Date().toDateString()?d.toLocaleTimeString('it-IT',o):d.toLocaleString('it-IT',{day:'2-digit',month:'2-digit',...o})};const sgR=x=>(x>=0?'+':'')+(+x).toFixed(2)+'R';
+function log(m){LOG.unshift({t:Date.now(),m});LOG=LOG.slice(0,60)}
+function save(){LS.set('j',J.slice(0,300));LS.set('w',W);LS.set('sel',SEL)}
+let SRC='',DEMO=false,DJ=[],FT=null;const ST=()=>J;
+const API='https://jkvvfzpvwbjxtdzsesct.supabase.co/functions/v1/scan';
+const capv=()=>+$('#cap').value||1000,rpv=()=>cl(+$('#risk').value||1,.1,5);
+// Il motore gira sul server ogni 5 minuti: la pagina legge solo i risultati.
+async function scan(){
+  if(busy)return;busy=true;
+  try{
+    const c=new AbortController(),tm=setTimeout(()=>c.abort(),15000);let v;
+    try{const r=await fetch(API,{signal:c.signal,cache:'no-store'});if(!r.ok)throw new Error('server '+r.status);v=await r.json()}finally{clearTimeout(tm)}
+    if(!v.snap)throw new Error('prima scansione non ancora completata');
+    FT=v.ftmo||null;if(v.cap&&LS.get('cap',null)==null)$('#cap').value=v.cap;if(v.risk&&LS.get('risk',null)==null)$('#risk').value=v.risk;
+    const sn=v.snap;D=sn.d;RADAR=sn.radar;CTX={fng:sn.fng,fund:sn.fund||{},ob:sn.ob||{},lab:sn.lab||[],rank:sn.rank||[],macro:sn.macro||null,rm:sn.rm||1};if(!D[SEL.sym])SEL.sym=Object.keys(D)[0]||SEL.sym;if(D[SEL.sym]&&!D[SEL.sym][SEL.tf])SEL.tf='1d';LOG=v.log||[];if(v.w)W=v.w;
+    J=(v.signals||[]).map(e=>({...e,t:Date.parse(e.t),tEnd:e.t_end?Date.parse(e.t_end):null,R:e.r}));
+    const o=J.find(e=>e.status=='open');if(o&&!scan.sel){SEL={sym:o.sym,tf:o.tf};scan.sel=1}
+    const age=Math.round((Date.now()-sn.t)/60000),old=age>15;
+    $('#dot').className=old?'dot err':'dot on';$('#demo').hidden=!old;
+    $('#demo').textContent='Attenzione: l\'ultima scansione riuscita è di '+age+' minuti fa'+(v.err&&v.err.t>sn.t?' ('+v.err.m+')':'')+'. I numeri qui sotto non sono aggiornati.';
+    $('#status').textContent='Dati reali '+sn.src+' · scansione del server alle '+hm(sn.t)+(sn.fng!=null?' · paura/avidità '+sn.fng+'/100':'');
+    const nw=J.filter(e=>e.status=='open').map(e=>e.id).join();if(scan.last!=null&&nw!=scan.last&&nw)alertUser('Nuova operazione segnalata');scan.last=nw;
+  }catch(e){$('#dot').className='dot err';$('#status').textContent='Server non raggiungibile ('+e.message+'). Riprovo tra poco.'}
+  busy=false;next=60;render();renderFT();livePx()}
+function renderFT(){const sec=$('#ftsec');if(!FT){sec.hidden=true;return}sec.hidden=false;
+  const bar=(l,v,lim,col)=>{const p=cl(v/lim,0,1)*100;return `<div class="vr"><span>${l}</span><span class="bar one"><i style="background:var(--${col});left:0;width:${p}%"></i></span><b class="num">${Math.round(p)}%</b></div>`};
+  const loss=Math.max(0,-FT.pnl),dl=Math.max(0,-FT.dp);
+  $('#ft').innerHTML=bar('Perdita oggi',dl,FT.dl,'dn')+`<p class="vn">€${dl.toFixed(0)} su €${FT.dl} consentiti</p>`+bar('Perdita totale',loss,FT.ml,'dn')+`<p class="vn">€${loss.toFixed(0)} su €${FT.ml} consentiti</p>`+bar('Obiettivo',Math.max(0,FT.pnl),FT.tg,'up')+`<p class="vn">${FT.pnl>=0?'+':''}€${FT.pnl.toFixed(0)} su €${FT.tg}</p><p class="sm mut">Rischio per operazione €${FT.R.toFixed(0)} · ${FT.op} aperte. ${FT.block?'<b class="dn">Nuovi segnali fermi: '+esc(FT.block)+'</b>':'Nessun freno attivo.'}</p>`}
+function decide(){}function resolve(){}
+const jrow=(n,s,nt)=>`<div class="jr"><span>${n}</span><span class="bar"><i style="width:${s*10}%"></i></span><b class="num">${s.toFixed(1)}</b><span class="jn">${esc(nt.join(' · '))}</span></div>`;
+const MSF={'15m':9e5,'1h':36e5,'4h':144e5,'1d':864e5},WINC=6;let LP={};
+// Giudizio sull'ingresso: stesso calcolo del server. Non blocca mai la rilevazione, dice solo come e se entrare adesso.
+function advise(e,P,now){
+  const d=e.dir,E=e.entry,R=Math.abs(E-e.sl),t0=e.tms??e.t,m=d*(P-E)/R,risk=d*(P-e.sl)/R,rew=d*(e.tp1-P)/R,age=(now-t0)/MSF[e.tf],rr=risk>0?rew/risk:0,buy=d>0;
+  const o={m,rr,age,order:null,orderText:'Non aprire',until:null},mk=(c,l)=>{o.code=c;o.label=l;return o};
+  if(risk<=.05)return mk('INVALID','Invalidato: il prezzo ha toccato lo stop');
+  if(rew<=0)return mk('DONE','Obiettivo già raggiunto: non entrare');
+  if(age>=WINC*2)return mk('STALE','Scaduto: è passato troppo tempo dal segnale');
+  if(age>=WINC&&Math.abs(m)<.3&&!(e.stage>0))return mk('FLAT','Mercato fermo: il movimento non è partito, non conviene entrare');
+  if(m>=-.15&&m<=.2&&age<=WINC){o.order='MARKET';o.orderText=(buy?'BUY':'SELL')+' a mercato';o.until=t0+WINC*MSF[e.tf];return mk('MARKET','Entra ora a mercato')}
+  if(m>.2){if(m<=1){o.order='LIMIT';o.orderText=(buy?'Buy Limit':'Sell Limit')+' a '+fp(E);o.until=t0+WINC*2*MSF[e.tf];return mk('LIMIT','Prezzo già partito: aspetta il ritorno con un ordine Limit')}return mk('LATE','Tardi: il prezzo ha già fatto oltre 1R senza di te, non inseguirlo')}
+  if(m<-.15&&m>-.6){o.order='STOP';o.orderText=(buy?'Buy Stop':'Sell Stop')+' a '+fp(E);o.until=t0+WINC*2*MSF[e.tf];return mk('STOP','Prezzo contro il segnale: entra solo se torna sull\'entrata, con un ordine Stop')}
+  if(m<=-.6)return mk('WEAK','Setup debole: il prezzo è vicino allo stop, non entrare');
+  return mk('LATE','Tardi: la finestra di ingresso è chiusa')}
+function card(e){
+  const P=LP[e.sym]??e.cur??e.entry,now=Date.now(),obs=e.advised===false,ad0=advise(e,P,now),ad=obs?{...ad0,code:'OBS',label:'Non entrare: segnale registrato solo per studio',order:null,until:null}:ad0,R=Math.abs(e.entry-e.sl),d=e.dir,rm=(e.why&&e.why.rm)||1,ra=capv()*rpv()/100*rm,xm=(e.why&&e.why.x)||'B',trR=xm=='C'?1.5:2.5,fsn=(e.why&&e.why.fs)||'',fut=e.why&&e.why.src=='y';
+  const ref=ad.order=='MARKET'?P:e.entry,qty=ra/Math.abs(ref-e.sl),lev=qty*ref/capv(),w=e.why||{},nt=w.notes||{},atr=e.atr||R/1.5,mv=d*(P-e.entry),j=e.judges;
+  const cls=ad.code=='MARKET'?'up':(ad.code=='LIMIT'||ad.code=='STOP')?'acc':'dn';
+  const lo=Math.min(e.sl,e.tp2),hi=Math.max(e.sl,e.tp2),pos=v=>cl((v-lo)/(hi-lo),0,1)*100;
+  const mk=(v,c)=>`<i class="mk" style="left:${pos(v)}%;background:var(--${c})"></i>`;
+  const lst=k=>(nt[k]||[]).map(esc).join(' · ');
+  const far=(xm=='B'?'Obiettivo ':'+6R ')+fp(e.tp2),ends=d>0?[`Stop ${fp(e.sl)}`,`Entrata ${fp(e.entry)}`,far]:[far,`Entrata ${fp(e.entry)}`,`Stop ${fp(e.sl)}`];
+  const man=e.stage>0?`Stop consigliato ora: <b>${fp(e.stop_rec)}</b> (${e.stage==1?'pareggio':'stop mobile'}). Il server lo ricalcola ogni 5 minuti e ti avvisa con una notifica quando va spostato.`:xm=='B'?`Stop iniziale ${fp(e.sl)}. Va in pareggio quando il prezzo arriva a ${fp(e.entry+d*R)} (+1R), e da ${fp(e.entry+d*1.5*R)} (+1,5R) segue il prezzo a distanza 0,75R fino all'obiettivo a +3R.`:`Stop iniziale ${fp(e.sl)} (distanza ${fp(R)}). Nessun take profit: lo stop segue il prezzo a ${fp(trR*R)} (${String(trR).replace('.',',')}R) dal punto migliore raggiunto. La posizione si chiude solo quando il prezzo torna indietro di quella distanza: è così che si resta dentro ai movimenti lunghi.`;
+  const tkt=ad.order?`<div class="tkt"><h3>Cosa inserire in MT5 (telefono)</h3><dl class="lv"><div><dt>Tipo ordine</dt><dd><b>${esc(ad.orderText)}</b></dd></div><div><dt>Stop loss</dt><dd class="dn">${fp(e.sl)}</dd></div><div><dt>Take profit</dt><dd class="up">${xm=='B'?fp(e.tp2):'nessuno'}</dd></div><div><dt>Quantità</dt><dd>${String(+qty.toPrecision(4))}</dd></div><div><dt>Perdita massima</dt><dd class="dn">$${ra.toFixed(2)} (${(rpv()*rm).toFixed(2)}%)</dd></div><div><dt>Leva effettiva</dt><dd>${lev.toFixed(2)}x su max 30x</dd></div>${ad.order!='MARKET'?`<div><dt>Annulla l'ordine se</dt><dd>il prezzo tocca ${fp(e.tp1)} prima, oppure dopo le ${hm(ad.until)}</dd></div>`:''}</dl></div>`:`<div class="tkt"><h3>Ordine</h3><p class="sm" style="margin:0">${obs?'Nessun ordine: questa combinazione non è operativa (motivo sopra). La seguo lo stesso per misurare come va, senza soldi veri.':'Nessun ordine da inserire adesso. Se sei già dentro, segui la gestione dello stop qui sotto.'}</p></div>`;
+  return `<article class="sig"><header><b>${esc(e.name)}${fsn?' · '+esc(fsn):''}</b><span class="pill ${d>0?'up':'dn'}">${d>0?'COMPRA (long)':'VENDI (short)'}</span><span class="mut sm">individuato alle ${hm(e.t)} · ${esc(e.tf)}</span>${e.advised===false?`<span class="pill dn">${j.pass?'in pausa':'non operativo'}</span>`:''}</header>
+  ${e.advised===false?`<p class="sm dn" style="margin:0 0 10px">${esc(e.why_not||'')}</p>`:''}
+  <div class="advice ${cls}">${esc(ad.label)}<small>${ad.until&&ad.code=='MARKET'?'Ingresso valido fino alle '+hm(ad.until)+'. ':''}Prezzo ora ${fp(P)} · ${mv>=0?'+':''}${(mv/R).toFixed(2)}R dal segnale${xm=='B'?' · premio/rischio residuo '+ad.rr.toFixed(2):''}</small></div>${fut?`<p class="sm mut" style="margin:0 0 10px">Livelli presi dal future: sul tuo broker il prezzo è un po' diverso. Usa le distanze: stop a ${fp(R)} dall'entrata.</p>`:''}
+  ${tkt}
+  <div class="mt">${mk(e.sl,'dn')}${mk(e.entry,'mut')}${mk(e.tp1,'up')}${mk(e.tp2,'up')}<i class="px" style="left:${pos(P)}%"></i></div>
+  <div class="ends">${ends.map(t=>`<span>${t}</span>`).join('')}</div>
+  <p class="sm mut" style="margin:0 0 10px">Movimento dal segnale: ${(mv/atr).toFixed(2)} ATR · candele ${esc(e.tf)} trascorse: ${Math.floor(ad.age)} (finestra di ingresso ${WINC}).</p>
+  <div class="tkt"><h3>Gestione del trade</h3><p class="sm" style="margin:0">${man}</p></div>
+  <details class="why"><summary>Come è stato individuato</summary>
+  <p>${esc(e.strat)}. Regime ${esc(e.regime)}${w.adx!=null?' (ADX '+(+w.adx).toFixed(0)+')':''}${w.rsi!=null?' · RSI '+(+w.rsi).toFixed(0):''}${w.cons!=null?' · consenso degli agenti '+(w.cons>0?'+':'')+(w.cons*100).toFixed(0)+'%':''}</p>
+  <ul><li>Trend: ${lst('trend')}</li><li>Smart Money: ${lst('smc')}</li><li>Momentum: ${lst('mom')}</li><li>Flussi: ${lst('flow')}</li></ul>
+  ${jrow('Lettura tecnica',j.T,j.nt.T)}${jrow('Contesto e rischio',j.R,j.nt.R)}${jrow('Prova sui dati',j.S,j.nt.S)}</details>
+  <div class="rel"><span class="mut">${j.edge?`Resa netta attesa per operazione · ${j.edge.noos} casi mai visti, ${Math.round(j.edge.wr*100)}% chiusi in utile`:'Voto dei giudici'}</span><b class="${j.edge?(j.edge.proven?'up':'dn'):''}">${j.edge?sgR(j.edge.eoos):Math.round(j.avg*10)+'%'}</b></div></article>`}
+function renderSigs(){const open=ST().filter(e=>e.status=='open'),a=open.filter(e=>e.advised!==false),u=open.filter(e=>e.advised===false);
+  $('#sigs').innerHTML=open.length?[...a,...u].map(card).join(''):`<div class="empty">${Object.keys(D).length?'Nessun setup in questo momento. Si opera solo sulle combinazioni che il laboratorio ha trovato in guadagno. Il server scansiona ogni 5 minuti e ti avvisa sul telefono.':'Scansione dei mercati in corso…'}</div>`}
+async function livePx(){const o=J.filter(e=>e.status=='open');if(!o.length)return;const syms=[...new Set(o.map(e=>e.sym).filter(x=>/USDT$/.test(x)))];if(!syms.length)return;
+  try{const c=new AbortController(),tm=setTimeout(()=>c.abort(),6000);const r=await fetch('https://data-api.binance.vision/api/v3/ticker/price?symbols='+encodeURIComponent(JSON.stringify(syms)),{signal:c.signal});clearTimeout(tm);if(!r.ok)return;for(const x of await r.json())LP[x.symbol]=+x.price;renderSigs()}catch(e){}}
+function render(){
+  const open=ST().filter(e=>e.status=='open');
+  renderSigs();
+  const advOpen=new Set(J.filter(e=>e.status=='open'&&e.advised!==false).map(e=>e.sym));
+  $('#radar').innerHTML=RADAR.length?RADAR.map(r0=>{const r={...r0};if(r.st=='Operazione aperta'&&!advOpen.has(r.sym)){r.st='Rilevato, non operativo';r.why=r.why||'solo osservazione'}return r}).map(r=>`<tr class="pick" data-s="${r.sym}" data-t="${r.tf}"><td><b>${esc(r.name)}</b>${r.fs?`<div class="sm mut">${esc(r.fs)}</div>`:''}</td><td>${r.tf}</td><td>${r.regime}</td><td class="num ${r.cons>0?'up':'dn'}">${(r.cons>0?'+':'')+(r.cons*100).toFixed(0)}%</td><td><b class="${r.st=='SEGNALE'?'up':''}">${r.st}</b>${r.why?`<div class="sm mut">${esc(r.why)}</div>`:''}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">In attesa dei dati…</td></tr>';
+  const SN={trend:'Rientro in trend',brkv:'Rottura con volume',d20:'Rottura a 20 candele',d55:'Rottura a 55 candele',rsi2:'Rientro dal ribasso (RSI2)',ma:'Medie 21/50/200 esponenziali',mas:'Medie 21/50/200 semplici'},TO={'1d':0,'4h':1};
+  if(CTX.lab.length)$('#lab').innerHTML=CTX.lab.slice().sort((a,b)=>b.on-a.on||(a.cls<b.cls?-1:a.cls>b.cls?1:0)||TO[a.tf]-TO[b.tf]||b.eoos-a.eoos).map(l=>`<tr><td>${esc(l.cls)}</td><td>${l.tf}</td><td>${SN[l.strat]||l.strat}</td><td>${l.side=='L'?'compra':'vendi'}</td><td>${l.x}</td><td class="num">${l.n}</td><td class="num ${l.eis>0?'up':'dn'}">${sgR(l.eis)}</td><td class="num ${l.eoos>0?'up':'dn'}">${sgR(l.eoos)}</td><td><b class="${l.on?'up':'mut'}">${l.on?'Accesa':'Spenta'}</b></td></tr>`).join('');
+  if(CTX.rank.length)$('#rank').innerHTML=CTX.rank.map(r=>`<tr><td><b>${esc(r.name)}</b><div class="sm mut">${esc(r.fs||'')}</div></td><td>${esc(r.cls)}</td><td class="num">${r.n??'—'}</td><td class="num ${r.e>0?'up':'dn'}">${r.e!=null?sgR(r.e):'—'}</td><td><b class="${r.on?'up':'mut'}">${r.on?'Seguito':'Non seguito'}</b></td></tr>`).join('');
+  const mc=CTX.macro;$('#mac').textContent=(mc&&mc.next?'Prossimo dato macro USA: '+mc.next.n+', '+hm(mc.next.t)+'. Nell\'ora prima i nuovi ingressi vanno in pausa.':mc&&!mc.ok?'Calendario macro non disponibile in questo momento.':'')+(CTX.rm<1?' Rischio dimezzato: due perdite di fila.':'');
+  const x=D[SEL.sym]&&D[SEL.sym][SEL.tf],nm=(RADAR.find(r=>r.sym==SEL.sym)||{}).name||'';
+  $('#agt').textContent='· '+nm+' '+SEL.tf;$('#cht').textContent='· '+nm+' '+SEL.tf;
+  $('#tfs').innerHTML=TFS.map(t=>`<button data-tf="${t}" class="${t==SEL.tf?'on':''}">${t}</button>`).join('');
+  if(x){const a=x.a;
+    $('#agents').innerHTML=Object.keys(AG).map(k=>{const v=a.votes[k];return `<div class="vr"><span>${AG[k]}</span><span class="bar"><i style="background:var(--${v>=0?'up':'dn'});left:${v>=0?50:50+v*50}%;width:${Math.abs(v)*50}%"></i></span><b class="num ${v>=0?'up':'dn'}">${(v>0?'+':'')+(v*100).toFixed(0)}</b></div><p class="vn">${esc(a.notes[k].join(' · '))}</p>`}).join('')
+      +`<div class="rel"><span class="mut">Consenso · regime ${a.regime} (ADX ${a.adx.toFixed(0)})</span><b class="${a.cons>0?'up':'dn'}" style="color:var(--${a.cons>0?'up':'dn'})">${(a.cons>0?'+':'')+(a.cons*100).toFixed(0)}%</b></div><p class="sm mut">Strategia adatta a questo regime: ${esc(a.strat)}. Test su anni di dati, costi inclusi: ${x.bt.n} casi, ${Math.round(x.bt.wr*100)}% chiusi in utile, ${sgR(x.bt.exp)} netti nel periodo mai visto.${a.pump?' Allarme: candela gonfiata con volume anomalo, non inseguire.':''}</p>`;
+    const o=CTX.ob[SEL.sym],fu=CTX.fund[SEL.sym];
+    $('#obk').textContent=(o?'Book entro l\'1%: '+(o.imb>0?'+':'')+(o.imb*100).toFixed(0)+'% · muro acquisti a '+fp(o.wb[0])+' · muro vendite a '+fp(o.wa[0]):'Book non disponibile')+(fu!=null?' · funding '+fu.toFixed(3)+'%':'');
+    draw()}
+  const cl_=J.filter(e=>e.status!='open'&&e.advised!==false),dec=cl_.filter(e=>e.status!='flat'),wn=cl_.filter(e=>e.status=='win').length,R=cl_.reduce((s,e)=>s+(e.R||0),0);
+  $('#stats').innerHTML=cl_.length?`<div class="lv"><div><dt>Operazioni chiuse</dt><dd>${cl_.length}</dd></div><div><dt>Precisione reale</dt><dd>${dec.length?Math.round(wn/dec.length*100):0}%</dd></div><div><dt>Risultato</dt><dd class="${R>=0?'up':'dn'}">${(R>=0?'+':'')+R.toFixed(1)}R</dd></div><div><dt>Errori archiviati</dt><dd>${dec.length-wn}</dd></div></div>`:'<div class="empty">Ancora nessuna operazione chiusa. Ogni esito, vinto o perso, finisce qui e corregge i pesi degli agenti.</div>';
+  $('#jr').innerHTML=cl_.slice(0,40).map(e=>`<tr><td class="sm">${new Date(e.tEnd||e.t).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'})}</td><td>${esc(e.name)} ${esc(e.tf)} ${e.dir>0?'long':'short'}</td><td class="${e.status=='win'?'up':e.status=='loss'?'dn':'mut'}">${e.status=='win'?'Vinta':e.status=='loss'?'Persa':'Pareggio'}${e.R!=null?' '+(e.R>=0?'+':'')+(+e.R).toFixed(2)+'R':''}</td><td class="sm mut">${esc(e.lesson||'')}</td></tr>`).join('');
+  $('#log').innerHTML=LOG.map(l=>`<div><time>${hm(l.t)}</time>${esc(l.m)}</div>`).join('')||'<div class="empty">Qui compare ogni decisione degli agenti e dei giudici.</div>'}
+function draw(){
+  const cv=$('#cv'),x=D[SEL.sym]&&D[SEL.sym][SEL.tf];if(!x)return;const K=x.K,dpr=window.devicePixelRatio||1,w=cv.clientWidth,h=260;cv.width=w*dpr;cv.height=h*dpr;
+  const g=cv.getContext('2d');g.scale(dpr,dpr);const cs=getComputedStyle(document.documentElement),col=n=>cs.getPropertyValue(n).trim();
+  const n=K.c.length,N=Math.min(120,n),s=n-N;let lo=Infinity,hi=-Infinity;for(let i=s;i<n;i++){lo=Math.min(lo,K.l[i]);hi=Math.max(hi,K.h[i])}
+  const e=ST().find(e=>e.sym==SEL.sym&&e.tf==SEL.tf&&e.status=='open');if(e){lo=Math.min(lo,e.sl,e.tp1);hi=Math.max(hi,e.sl,e.tp1)}
+  const pad=(hi-lo)*.06;lo-=pad;hi+=pad;const RW=62,cw=(w-RW)/N,X=i=>(i-s+.5)*cw,Y=p=>h-8-(p-lo)/(hi-lo)*(h-16);
+  g.font='11px ui-monospace,Menlo,monospace';g.textBaseline='middle';
+  for(let k=0;k<=4;k++){const p=lo+(hi-lo)*k/4,y=Y(p);g.strokeStyle=col('--line');g.lineWidth=1;g.beginPath();g.moveTo(0,y);g.lineTo(w-RW,y);g.stroke();g.fillStyle=col('--mut');g.fillText(fp(p),w-RW+6,y)}
+  for(let i=s;i<n;i++){const up=K.c[i]>=K.o[i];g.strokeStyle=g.fillStyle=col(up?'--up':'--dn');g.beginPath();g.moveTo(X(i),Y(K.h[i]));g.lineTo(X(i),Y(K.l[i]));g.stroke();const a=Y(Math.max(K.o[i],K.c[i])),b=Y(Math.min(K.o[i],K.c[i]));g.fillRect(X(i)-cw*.32,a,cw*.64,Math.max(1,b-a))}
+  const line=(arr,c,wd)=>{g.strokeStyle=c;g.lineWidth=wd;g.beginPath();let st=0;for(let i=s;i<n;i++){const y=Y(arr[i]);if(!isFinite(y))continue;st?g.lineTo(X(i),y):g.moveTo(X(i),y);st=1}g.stroke()};
+  line(K.e50,col('--mut'),1);line(K.e200,col('--acc'),1.6);
+  if(e)for(const [p,c,t] of [[e.entry,'--fg','ENTRATA'],[e.sl,'--dn','STOP'],[e.tp1,'--up','TP1']]){const y=Y(p);g.strokeStyle=col(c);g.setLineDash([5,4]);g.lineWidth=1.2;g.beginPath();g.moveTo(0,y);g.lineTo(w-RW,y);g.stroke();g.setLineDash([]);g.fillStyle=col(c);g.fillText(t,4,y-8)}}
+/*INVESTIMENTI*/
+const INV_API='https://jkvvfzpvwbjxtdzsesct.supabase.co/functions/v1/inv';
+let IV=null,PR=null,TAB=LS.get('tab','trading');
+const eur=x=>x==null||!isFinite(x)?'—':x.toLocaleString('it-IT',{style:'currency',currency:'EUR',maximumFractionDigits:Math.abs(x)>=1000?0:2});
+const pc=(x,d=1)=>x==null||!isFinite(x)?'—':(x>=0?'+':'')+(x*100).toFixed(d).replace('.',',')+'%';
+const pu=(x,d=1)=>x==null||!isFinite(x)?'—':(x*100).toFixed(d).replace('.',',')+'%';
+const big=(x,c)=>{if(x==null||!isFinite(x))return'—';const a=Math.abs(x),s=x<0?'-':'',u=c=='EUR'?'€':c=='DKK'?'DKK ':'$';return a>=1e12?s+u+(a/1e12).toFixed(2).replace('.',',')+' mila mld':a>=1e9?s+u+(a/1e9).toFixed(1).replace('.',',')+' mld':s+u+(a/1e6).toFixed(0)+' mln'};
+const cls2=x=>x==null?'':x>=0?'up':'dn';
+// Pesi obiettivo per profilo: ETF a zero commissioni su Fineco, un mondo azionario + emergenti, obbligazioni coperte dal cambio, oro.
+const PROF={prudente:{'SWDA.MI':30,'EIMI.MI':5,'AGGH.MI':30,'XGLE.MI':20,'SGLD.MI':10,'XEON.MI':5},bilanciato:{'SWDA.MI':50,'EIMI.MI':10,'AGGH.MI':20,'XGLE.MI':10,'SGLD.MI':10},dinamico:{'SWDA.MI':70,'EIMI.MI':10,'AGGH.MI':10,'SGLD.MI':10},aggressivo:{'SWDA.MI':80,'EIMI.MI':15,'SGLD.MI':5}};
+const PN={prudente:'Prudente',bilanciato:'Bilanciato',dinamico:'Dinamico',aggressivo:'Aggressivo'};
+function targetW(p){const H=+p.h||0;if(H<1)return{w:{'XEON.MI':100},why:'Orizzonte sotto un anno: niente azioni, solo parcheggio della liquidità.'};if(H<3)return{w:{'XEON.MI':40,'AGGH.MI':30,'SWDA.MI':25,'SGLD.MI':5},why:'Orizzonte sotto i 3 anni: le azioni possono perdere il 30% e non avresti il tempo di recuperare, quindi restano al 25%.'};let k=p.r||'dinamico',why='';if(H<5&&(k=='dinamico'||k=='aggressivo')){k='bilanciato';why='Orizzonte sotto i 5 anni: profilo ridotto a Bilanciato. '}return{w:PROF[k],k,why:why+'Profilo '+PN[k]+': '+Object.entries(PROF[k]).map(([t,v])=>v+'% '+t.replace(/\..*/,'')).join(', ')+'.'}}
+const BRK={fineco:{n:'Fineco',frac:false,fee:(e,a)=>e.z?0:Math.min(19,Math.max(2.95,a*.0019))},scalable:{n:'Scalable Capital',frac:true,fee:()=>0},tr:{n:'Trade Republic',frac:true,fee:()=>0},directa:{n:'Directa',frac:false,fee:()=>5}};
+function etfMap(){const E={};for(const e of (IV&&IV.etf&&IV.etf.etf)||[])if(e.px)E[e.t]=e;return E}
+function readForm(){const hold={};document.querySelectorAll('#p_hold input').forEach(i=>{const v=+i.value;if(v>0)hold[i.dataset.t]=v});
+  return{...(PR||{}),goal:{v:+$('#g_goal').value,now:+$('#g_now').value,dep:+$('#g_dep').value,inc:+$('#g_inc').value,ftmo:+$('#g_ftmo').value,y:+$('#g_years').value},m:+$('#p_m').value||0,h:+$('#p_h').value||0,r:$('#p_r').value,b:$('#p_b').value,cash:+$('#p_cash').value||0,em:$('#p_em').checked,hold}}
+function fillForm(p){if(!p)return;if(p.goal){const g=p.goal;$('#g_goal').value=g.v||1e6;$('#g_now').value=g.now||0;$('#g_dep').value=g.dep??300;$('#g_inc').value=g.inc??3;$('#g_ftmo').value=String(g.ftmo||0);$('#g_years').value=g.y||15}$('#p_m').value=p.m??300;$('#p_h').value=p.h??15;$('#p_r').value=p.r||'dinamico';$('#p_b').value=p.b||'fineco';$('#p_cash').value=p.cash||0;$('#p_em').checked=!!p.em;renderHold(p.hold||{})}
+function renderHold(h){const E=(IV&&IV.etf&&IV.etf.etf)||[];$('#p_hold').innerHTML=E.map(e=>`<label>${esc(e.t.replace(/\..*/,''))} · ${esc(e.n)}<input type="number" min="0" step="1" data-t="${e.t}" value="${h[e.t]||''}" placeholder="0"></label>`).join('')||'<p class="sm mut">In attesa dei dati ETF…</p>'}
+// Piano del mese: i soldi nuovi vanno a ciò che è più sotto il peso obiettivo (ribilanciamento senza vendere), al massimo 3 ordini, quote intere dove il broker non le frazioni.
+function plan(p){
+  const E=etfMap(),B=BRK[p.b]||BRK.fineco,out={rows:[],notes:[],left:0};if(!Object.keys(E).length)return null;
+  let C=(+p.m||0)+(+p.cash||0);const tw=targetW(p),W=tw.w;out.why=tw.why;
+  if(!p.em&&p.m>0){const x=Math.round(p.m*.5),e=E['XEON.MI'];C-=x;if(e){const q=B.frac?x/e.px:Math.floor(x/e.px);if(q>0)out.rows.push({t:'XEON.MI',e,q,amt:q*e.px,fee:B.fee(e,q*e.px),why:'fondo di emergenza: metà del versamento finché non hai 3-6 mesi di spese da parte'});out.left+=x-q*e.px}
+    out.notes.push('Prima di investire tutto serve un cuscinetto: metà del versamento va nel fondo di emergenza (XEON, liquidità che rende il tasso BCE) finché non spunti la casella del fondo.')}
+  let V=0;const cur={};for(const t in (p.hold||{})){const e=E[t];if(!e)continue;cur[t]=p.hold[t]*e.px;V+=cur[t]}
+  const T=V+C;let al=Object.keys(W).filter(t=>E[t]).map(t=>({t,e:E[t],w:W[t]/100,now:V>0?(cur[t]||0)/V:0,d:Math.max(0,W[t]/100*T-(cur[t]||0))}));
+  const sd=al.reduce((a,x)=>a+x.d,0);al.forEach(x=>x.a=sd>0?C*x.d/sd:C*x.w);al.sort((a,b)=>b.a-a.a);
+  // al massimo 3 ordini al mese: il resto va ai primi tre
+  if(al.length>3){const ex=al.slice(3).reduce((a,x)=>a+x.a,0),top=al.slice(0,3),s=top.reduce((a,x)=>a+x.a,0)||1;top.forEach(x=>x.a+=ex*x.a/s);al=top}
+  let left=0;
+  for(const x of al){const e=x.e;let a=x.a+left;left=0;
+    if(B.fee(e,a)>0&&a<300&&!B.frac){left+=a;out.notes.push(`${e.t.replace(/\..*/,'')}: con ${B.n} costa commissioni, conviene comprarlo quando ci sono almeno 300 € (ora ${eur(x.a)}): resta da parte.`);continue}
+    const fee=B.fee(e,a),q=B.frac?Math.max(0,(a-fee)/e.px):Math.floor((a-fee)/e.px);
+    if(q<=0||(B.frac&&q*e.px<1)){left+=a;out.notes.push(`${e.t.replace(/\..*/,'')}: una quota costa ${eur(e.px)}, oggi non basta: l'importo resta da parte per il mese prossimo.`);continue}
+    const amt=q*e.px;left+=a-amt-fee;
+    out.rows.push({t:e.t,e,q,amt,fee,why:V>0?`oggi pesa ${pu(x.now,0)} del portafoglio, obiettivo ${pu(x.w,0)}`:`peso obiettivo ${pu(x.w,0)}`})}
+  // avanzo: un'altra quota del più sottopesato se ci sta
+  if(left>0&&!B.frac){for(const x of al){const e=x.e,fee=B.fee(e,e.px);if(left>=e.px+fee){const r=out.rows.find(r=>r.t==e.t);if(r&&!fee){r.q++;r.amt+=e.px;left-=e.px}else if(!r){out.rows.push({t:e.t,e,q:1,amt:e.px,fee,why:'avanzo del mese'});left-=e.px+fee}}}}
+  out.left+=left;out.V=V;out.T=T;out.W=W;out.cur=cur;out.B=B;return out}
+function renderPlan(){
+  const el=$('#plan');if(!IV||!IV.etf){el.innerHTML='';return}const p=readForm(),P=plan(p);if(!P){el.innerHTML='';return}
+  const tot=P.rows.reduce((a,r)=>a+r.amt+r.fee,0);
+  el.innerHTML=`<div class="note">${esc(P.why)}</div>
+  <div class="kpi"><div><dt>Portafoglio attuale</dt><dd>${eur(P.V)}</dd></div><div><dt>Da investire questo mese</dt><dd>${eur(tot)}</dd></div><div><dt>Resta per il mese prossimo</dt><dd>${eur(P.left)}</dd></div></div>
+  ${P.rows.length?`<div class="tw"><table><thead><tr><th>Compra su ${esc(P.B.n)}</th><th>Quote</th><th>Prezzo</th><th>Importo</th><th>Commissione</th><th>Perché</th></tr></thead><tbody>${P.rows.map(r=>`<tr><td><b>${esc(r.e.n)}</b><div class="sm mut">${esc(r.t.replace(/\..*/,''))} · ISIN ${esc(r.e.isin)}</div></td><td class="num">${P.B.frac?(+r.q.toFixed(3)).toString().replace('.',','):r.q}</td><td class="num">${eur(r.e.px)}</td><td class="num">${eur(r.amt)}</td><td class="num">${r.fee?eur(r.fee):'0 €'}</td><td class="sm">${esc(r.why)}</td></tr>`).join('')}</tbody></table></div>
+  <p class="sm mut">Come comprare: cerca l'ISIN nell'app del broker, ordine <b>al limite</b> con prezzo ${'circa lo 0,3% sopra l\'ultimo prezzo'} (es. ${eur(P.rows[0].e.px*1.003)} per ${esc(P.rows[0].t.replace(/\..*/,''))}), negli orari di borsa 9:05-17:25. Così non paghi mai più del dovuto.</p>
+  <div class="row"><button id="p_done" class="pri">Ho comprato queste quote</button><span class="sm mut">Aggiorna il portafoglio e porta l'avanzo al mese prossimo.</span></div>`:'<p class="empty">Questo mese nessun acquisto: l\'importo resta da parte.</p>'}
+  ${P.notes.length?`<ul class="neg">${P.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul>`:''}
+  ${P.V>0?`<p class="sm mut">Pesi attuali: ${Object.keys(P.W).map(t=>t.replace(/\..*/,'')+' '+pu((P.cur[t]||0)/P.V,0)+' (obiettivo '+P.W[t]+'%)').join(' · ')}</p>`:''}`;
+  const b=$('#p_done');if(b)b.onclick=async()=>{const p2=readForm();p2.hold={...(p2.hold||{})};for(const r of P.rows)p2.hold[r.t]=(p2.hold[r.t]||0)+r.q;p2.cash=Math.max(0,+P.left.toFixed(2));p2.log=[{d:new Date().toISOString().slice(0,10),rows:P.rows.map(r=>({t:r.t,q:r.q,px:r.e.px}))},...(p2.log||[])].slice(0,60);PR=p2;fillForm(p2);await savePlan(true)}}
+async function invPost(body){const r=await fetch(INV_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(!r.ok||j.error)throw new Error(j.error||('errore '+r.status));return j}
+async function savePlan(quiet){const pin=$('#p_pin').value.trim();PR=readForm();renderPlan();renderCalcOpts();if(pin.length<4){$('#p_msg').textContent='Scegli un PIN di almeno 4 cifre per salvare il piano sul server.';return}
+  try{await invPost({act:'save',pin,data:PR});LS.set('pin',pin);$('#p_msg').textContent=quiet?'Portafoglio aggiornato.':'Piano salvato.'}catch(e){$('#p_msg').textContent=e.message}}
+async function loadPlan(){const pin=$('#p_pin').value.trim()||LS.get('pin','');if(pin.length<4){$('#p_msg').textContent='Inserisci il tuo PIN.';return}$('#p_pin').value=pin;
+  try{const j=await invPost({act:'get',pin});if(j.isNew){$('#p_msg').textContent='Nessun piano salvato: compila e premi Salva.';return}PR=j.data;fillForm(PR);renderPlan();renderCalcOpts();$('#p_msg').textContent='Piano caricato.'}catch(e){$('#p_msg').textContent=e.message}}
+// ---- calcolatore interesse composto ----
+function instList(){
+  const L=[],E=(IV&&IV.etf&&IV.etf.etf)||[],S=(IV&&IV.stocks)||[],ST=((IV&&IV.strat&&IV.strat.rows)||[]).filter(r=>r.on);
+  L.push({id:'plan',g:'Il tuo portafoglio',n:'Il mio piano (pesi del profilo)'});
+  for(const e of E)if(e.px)L.push({id:'e:'+e.t,g:'ETF',n:e.n+' ('+e.t.replace(/\..*/,'')+')'});
+  for(const s of S.filter(s=>s.st&&s.st.r1).sort((a,b)=>a.name<b.name?-1:1))L.push({id:'s:'+s.sym,g:'Azioni (in dollari)',n:s.name+' ('+s.sym+')'});
+  const SN2={trend:'Rientro in trend',brkv:'Rottura con volume',d20:'Rottura 20 candele',d55:'Rottura 55 candele',ma:'Medie 21/50/200',mas:'Medie 21/50/200 semplici'};
+  for(const r of ST)L.push({id:'t:'+[r.cls,r.tf,r.strat,r.side,r.x].join('|'),g:'Strategie di trading accese',n:`${r.cls} ${r.tf} · ${SN2[r.strat]||r.strat} · ${r.side=='L'?'compra':'vendi'}`});
+  L.push({id:'custom',g:'Altro',n:'Percentuale personalizzata al mese'});return L}
+function renderCalcOpts(){const sel=$('#c_inst'),v=sel.value||LS.get('cinst','plan'),L=instList(),gs=[...new Set(L.map(x=>x.g))];
+  sel.innerHTML=gs.map(g=>`<optgroup label="${esc(g)}">${L.filter(x=>x.g==g).map(x=>`<option value="${esc(x.id)}">${esc(x.n)}</option>`).join('')}</optgroup>`).join('');
+  sel.value=L.some(x=>x.id==v)?v:'plan';calc()}
+// tassi annui reali per scenario
+function rates(id,sc){
+  const E=etfMap();
+  const fromStats=(st,ter)=>{const R=st.r5||st.r3||st.r1;if(!R)return null;const per=st.r5?5:st.r3?3:1;const m={med:R.med,p10:R.p10,p90:R.p90,min:R.min,y10:st.y10,y5:st.y5};
+    return{a:m[sc]??R.med,src:`${st.r5?'periodi di 5 anni':st.r3?'periodi di 3 anni':'periodi di 1 anno'} dal ${st.from.slice(0,4)}: peggiore ${pc(R.min)}, 1 su 10 sotto ${pc(R.p10)}, mediano ${pc(R.med)}, 1 su 10 sopra ${pc(R.p90)}, migliore ${pc(R.max)} l'anno. Ultimi 10 anni ${pc(st.y10)}, ultimi 5 ${pc(st.y5)} l'anno.`,per,yearly:st.yearly,cost:.002}};
+  if(id=='plan'){const p=PR||readForm(),W=targetW(p).w;let a=0,ws=0,miss=[];for(const t in W){const e=E[t];const r=e&&fromStats(e);if(!r||r.a==null){miss.push(t);continue}a+=W[t]*r.a;ws+=W[t]}if(!ws)return null;
+    return{a:a/ws,src:'Media pesata dei rendimenti reali degli ETF del tuo profilo ('+Object.entries(W).map(([t,v])=>v+'% '+t.replace(/\..*/,'')).join(', ')+'), con lo scenario scelto applicato a ciascuno.'+(miss.length?' Senza storia sufficiente: '+miss.join(', ')+'.':''),cost:.002}}
+  if(id.startsWith('e:')){const e=E[id.slice(2)];return e?{...fromStats(e),name:e.n}:null}
+  if(id.startsWith('s:')){const s=((IV&&IV.stocks)||[]).find(x=>x.sym==id.slice(2));if(!s||!s.st)return null;const r=fromStats(s.st);return r&&{...r,name:s.name,src:r.src+' Valori in dollari: il cambio euro/dollaro può aggiungere o togliere qualche punto.'}}
+  if(id.startsWith('t:')){const [cls,tf,strat,side,x]=id.slice(2).split('|'),r=((IV&&IV.strat&&IV.strat.rows)||[]).find(q=>q.cls==cls&&q.tf==tf&&q.strat==strat&&q.side==side&&q.x==x);if(!r)return null;
+    const risk=(+$('#c_risk').value||.5)/100,mm=r.tpm*r.eo*risk,sdm=Math.sqrt(r.tpm)*r.sd*risk,N=Math.max(1,+$('#c_mo').value||12),z={med:0,p10:-1.28,p90:1.28,min:-2.33,y10:0,y5:0}[sc]??0,m=mm+z*sdm/Math.sqrt(N);
+    return{mo:m,a:Math.pow(1+m,12)-1,cost:0,trade:true,src:`Laboratorio, periodo mai visto: ${r.no} operazioni su ${r.syms} mercati in circa ${Math.round(r.om)} mesi, cioè ${r.tpm.toFixed(1).replace('.',',')} al mese. Resa media ${sgR(r.eo)} per operazione (dispersione ${r.sd.toFixed(2).replace('.',',')}R). Con rischio ${(risk*100).toFixed(1).replace('.',',')}% per operazione fa ${pc(mm,2)} al mese in media; lo scenario scelto tiene conto di quanto il risultato può variare su ${N} mesi. Non conta il limite di posizioni aperte insieme né i giorni di stop dei freni FTMO.`}}
+  if(id=='custom'){const m=(+$('#c_pct').value||0)/100;return{mo:m,a:Math.pow(1+m,12)-1,cost:0,src:'Percentuale scelta da te, non viene dai dati.'}}
+  return null}
+function calc(){
+  const id=$('#c_inst').value;LS.set('cinst',id);$('#c_riskl').hidden=!id.startsWith('t:');$('#c_pctl').hidden=id!='custom';
+  const sc=$('#c_sc').value,R=rates(id,sc),el=$('#calc'),tb=$('#ctab');if(!R||R.a==null){el.innerHTML='<p class="empty">Dati non ancora disponibili per questo strumento.</p>';tb.innerHTML='';return}
+  const cap=+$('#c_cap').value||0,dep=+$('#c_dep').value||0,N=Math.min(600,Math.max(1,+$('#c_mo').value||1)),tax=$('#c_tax').checked;
+  const mo=R.mo!=null?R.mo:Math.pow(1+R.a-(tax?R.cost:0),1/12)-1;
+  let bal=cap,inv=cap;const rows=[],start=new Date();
+  for(let k=1;k<=N;k++){bal+=dep;inv+=dep;const g=bal*mo;bal+=g;const d=new Date(start.getFullYear(),start.getMonth()+k,1);rows.push({k,d,inv,g,bal})}
+  const gain=bal-inv,net=tax&&gain>0?bal-gain*.26:bal;
+  el.innerHTML=`<div class="kpi"><div><dt>Capitale finale</dt><dd>${eur(bal)}</dd></div><div><dt>Totale versato</dt><dd>${eur(inv)}</dd></div><div><dt>Guadagno</dt><dd class="${cls2(gain)}">${eur(gain)}</dd></div><div><dt>${tax?'Netto dopo il 26% di tasse':'Senza tasse'}</dt><dd>${eur(net)}</dd></div><div><dt>Rendimento usato</dt><dd>${pc(R.a)} l'anno</dd></div><div><dt>Equivale al mese</dt><dd>${pc(mo,2)}</dd></div></div>
+  <p class="sm mut">${esc(R.src)}${R.trade?' Il trading ha anche mesi in perdita: il rendimento medio arriva solo se segui tutte le operazioni senza saltare quelle dopo una serie di stop.':''}</p>
+  ${R.yearly&&R.yearly.length?`<details class="why"><summary>Anno per anno, risultati veri</summary>${R.yearly.slice(-16).map(y=>{const w=Math.min(50,Math.abs(y.r)*100);return`<div class="yb"><span>${y.y}${y.part?'*':''}</span><span class="bar"><i style="background:var(--${y.r>=0?'up':'dn'});left:${y.r>=0?50:50-w}%;width:${w}%"></i></span><b class="num ${cls2(y.r)}">${pc(y.r)}</b></div>`}).join('')}<p class="sm mut">* anno in corso. La barra arriva al bordo a ±50%.</p></details>`:''}`;
+  tb.innerHTML=rows.map(r=>`<tr><td class="num">${r.k}</td><td>${r.d.toLocaleDateString('it-IT',{month:'short',year:'numeric'})}</td><td class="num">${eur(r.inv)}</td><td class="num ${cls2(r.g)}">${eur(r.g)}</td><td class="num"><b>${eur(r.bal)}</b></td><td class="num ${cls2(r.bal-r.inv)}">${eur(r.bal-r.inv)}</td></tr>`).join('');
+  // tre scenari sul grafico: prudente, mediano, ottimista
+  const ser=[];for(const [s,c] of [['p10','--dn'],['med','--acc'],['p90','--up']]){const q=rates(id,s);if(!q||q.a==null)continue;const m=q.mo!=null?q.mo:Math.pow(1+q.a-(tax?q.cost:0),1/12)-1;let b=cap;const v=[cap];for(let k=1;k<=N;k++){b=(b+dep)*(1+m);v.push(b)}ser.push({v,c,l:{p10:'prudente',med:'mediano',p90:'ottimista'}[s]})}
+  const vi=[cap];for(let k=1;k<=N;k++)vi.push(cap+dep*k);ser.push({v:vi,c:'--mut',l:'versato',dash:1});lineChart($('#ccv'),ser,N)}
+function lineChart(cv,ser,N){
+  const dpr=window.devicePixelRatio||1,w=cv.clientWidth,h=240;if(!w)return;cv.width=w*dpr;cv.height=h*dpr;const g=cv.getContext('2d');g.scale(dpr,dpr);
+  const cs=getComputedStyle(document.documentElement),col=n=>cs.getPropertyValue(n).trim();let hi=0;for(const s of ser)for(const v of s.v)hi=Math.max(hi,v);hi*=1.05;
+  const L=8,RW=70,X=k=>L+(w-L-RW)*k/N,Y=v=>h-22-(v/hi)*(h-52);g.font='11px ui-monospace,Menlo,monospace';g.textBaseline='middle';
+  for(let k=0;k<=4;k++){const v=hi*k/4,y=Y(v);g.strokeStyle=col('--line');g.lineWidth=1;g.beginPath();g.moveTo(L,y);g.lineTo(w-RW,y);g.stroke();g.fillStyle=col('--mut');g.fillText(v>=1e6?(v/1e6).toFixed(1)+'M€':v>=1e3?Math.round(v/1e3)+'k€':Math.round(v)+'€',w-RW+6,y)}
+  const yrs=N/12;for(let y=0;y<=yrs;y+=Math.max(1,Math.ceil(yrs/6))){g.fillStyle=col('--mut');g.fillText(y+'a',X(y*12)-6,h-8)}
+  let lx=L;for(const s of ser){g.strokeStyle=col(s.c);g.lineWidth=s.dash?1:2;g.setLineDash(s.dash?[4,4]:[]);g.beginPath();s.v.forEach((v,k)=>k?g.lineTo(X(k),Y(v)):g.moveTo(X(k),Y(v)));g.stroke();g.setLineDash([]);g.fillStyle=col(s.c);g.fillRect(lx,6,10,3);g.fillStyle=col('--mut');g.fillText(s.l,lx+14,8);lx+=g.measureText(s.l).width+30}}
+// ---- ETF, azioni, evitare, lungo periodo, broker ----
+const rng=(lo,hi,px,s200)=>{if(!(hi>lo))return'';const p=v=>cl((v-lo)/(hi-lo),0,1)*100;return`<div class="rng">${s200?`<i style="left:${p(s200)}%;background:var(--acc)"></i>`:''}<b style="left:${p(px)}%"></b></div>`};
+function renderEtf(){const E=(IV&&IV.etf&&IV.etf.etf)||[];if(!E.length)return;
+  $('#etfs').innerHTML=E.map(e=>e.err?`<tr><td colspan="8">${esc(e.n)}: dati non disponibili</td></tr>`:`<tr class="epick" data-e="${e.t}" style="cursor:pointer"><td style="min-width:190px"><b>${esc(e.n)}</b><div class="sm mut">${esc(e.t.replace(/\..*/,''))} · ${esc(e.a)} · <a href="https://www.justetf.com/it/etf-profile.html?isin=${e.isin}" target="_blank" rel="noopener">${e.isin}</a></div>${rng(e.lo52,e.hi52,e.px,e.s200)}<div class="rngl"><span>${eur(e.lo52)}</span><span>${eur(e.px)}</span><span>${eur(e.hi52)}</span></div></td><td class="num">${pu(e.ter/100,2)}</td><td>${e.z?'<b class="up">Sì</b>':'<span class="mut">No</span>'}</td><td class="num ${cls2(e.y1)}">${pc(e.y1)}</td><td class="num ${cls2(e.y5)}">${pc(e.y5)}</td><td class="num ${cls2(e.y10)}">${pc(e.y10)}</td><td class="num dn">${pc(e.maxdd,0)}</td><td class="num ${e.ddNow<-.1?'dn':''}">${pc(e.ddNow)}</td></tr>`).join('');
+  $('#etfat').textContent='Prezzi e rendimenti aggiornati il '+new Date(IV.etf.t).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'. Rendimenti annui composti. Fineco 0 € = nessuna commissione d\'acquisto con la promozione in corso.'}
+const AL=[['capex','Investimenti in impianti e tecnologia','--c1'],['buy','Riacquisto di azioni proprie','--c2'],['div','Dividendi','--c3'],['acq','Acquisizioni di aziende','--c4'],['debt','Rimborso netto di debiti','--c5']];
+function renderStocks(){const S=((IV&&IV.stocks)||[]).filter(s=>!s.err&&s.rows&&s.rows.length);if(!S.length){$('#stocks').innerHTML='<div class="empty">Bilanci in caricamento: il server li legge a gruppi, compaiono nei prossimi minuti.</div>';return}
+  const ord={'Interessante':0,"Da tenere d'occhio":1,'Evita adesso':2,'Dati insufficienti':3};S.sort((a,b)=>(ord[a.verdict]??4)-(ord[b.verdict]??4)||(b.score??-9)-(a.score??-9));
+  $('#stocks').innerHTML=S.map(s=>{const L=s.rows[s.rows.length-1],c=s.fcur||'USD',vc=s.verdict=='Interessante'?'up':s.verdict=='Evita adesso'?'dn':'acc',st=s.st||{},a=s.alloc;
+    const segs=a?AL.map(([k,l,cc])=>({k,l,cc,v:Math.max(0,a[k]||0)})):[];const tot=segs.reduce((x,y)=>x+y.v,0)||1,scale=Math.max(1,tot);
+    return`<article class="stock"><header><b>${esc(s.name)}</b><span class="mut sm">${esc(s.sym)} · ${s.px?(s.cur=='USD'?'$':'')+(+s.px).toFixed(2):'—'}</span><span class="pill ${vc}">${esc(s.verdict)}</span><span class="sm mut">punteggio ${s.score??'—'}</span></header>
+    ${rng(st.lo52,st.hi52,s.px,st.s200)}<div class="rngl"><span>min 52 sett. ${st.lo52?(+st.lo52).toFixed(2):'—'}</span><span>max ${st.hi52?(+st.hi52).toFixed(2):'—'}</span></div>
+    <dl class="lv" style="margin-top:8px"><div><dt>Ricavi ${L.y.slice(0,4)}</dt><dd>${big(L.rev,c)}</dd></div><div><dt>Crescita annua ricavi</dt><dd class="${cls2(s.growth)}">${pc(s.growth)}</dd></div><div><dt>Margine netto</dt><dd>${pu(s.nm)}</dd></div><div><dt>Cassa libera (FCF)</dt><dd class="${cls2(L.fcf)}">${big(L.fcf,c)}</dd></div><div><dt>Cassa libera / prezzo</dt><dd>${s.fy!=null?pu(s.fy,2):'—'}</dd></div><div><dt>Prezzo / utili</dt><dd>${s.pe?s.pe.toFixed(1).replace('.',','):'—'}</dd></div><div><dt>Debito netto</dt><dd class="${s.nd>0?'':'up'}">${big(s.nd,c)}</dd></div><div><dt>Rendimento 5 anni</dt><dd class="${cls2(st.y5)}">${pc(st.y5)} l'anno</dd></div></dl>
+    ${a?`<div class="sm">Dove sono andati i soldi nell'ultimo anno (su 100 di cassa prodotta dall'attività):</div><div class="stk">${segs.map(x=>`<i style="width:${x.v/scale*100}%;background:var(${x.cc})" title="${x.l}"></i>`).join('')}</div><div class="leg">${segs.filter(x=>x.v>.005).map(x=>`<span style="--c:var(${x.cc})">${x.l} ${Math.round(x.v*100)}</span>`).join('')}${a.rnd?`<span style="--c:var(--c6)">Ricerca e sviluppo: ${pu(a.rnd,0)} dei ricavi</span>`:''}</div>`:''}
+    ${s.why&&s.why.length?`<ul class="pos">${s.why.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}${s.bad&&s.bad.length?`<ul class="neg">${s.bad.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}
+    <details class="why"><summary>Bilanci degli ultimi anni</summary><div class="tw"><table><thead><tr><th>Anno</th><th>Ricavi</th><th>Utile</th><th>Cassa operativa</th><th>Investimenti</th><th>Cassa libera</th><th>Riacquisti</th><th>Dividendi</th></tr></thead><tbody>${s.rows.map(r=>`<tr><td>${r.y}</td><td class="num">${big(r.rev,c)}</td><td class="num ${cls2(r.ni)}">${big(r.ni,c)}</td><td class="num">${big(r.ocf,c)}</td><td class="num">${big(r.capex,c)}</td><td class="num ${cls2(r.fcf)}">${big(r.fcf,c)}</td><td class="num">${big(r.buy,c)}</td><td class="num">${big(r.div,c)}</td></tr>`).join('')}</tbody></table></div>
+    <p class="sm mut">Fonte: bilanci ${s.ifrs?'20-F (principi IFRS)':'10-K'} depositati alla SEC da ${esc(s.legal||s.name)}. <a href="${esc(s.src)}" target="_blank" rel="noopener">Apri i documenti originali</a>${s.fcur&&s.fcur!==s.cur?' · bilancio in '+s.fcur+', prezzo in '+s.cur+': rapporti di prezzo non calcolati':''}</p></details></article>`}).join('')}
+function renderAvoid(){
+  const S=((IV&&IV.stocks)||[]).filter(s=>s.verdict=='Evita adesso'),E=(IV&&IV.etf&&IV.etf.etf)||[],p=PR||readForm(),items=[];
+  items.push(['ETF a leva o "short" (2x, 3x, inversi)','Sono fatti per un giorno: tenuti mesi perdono valore anche se il mercato va nella direzione giusta, per l\'effetto del ricalcolo giornaliero.']);
+  items.push(['Fondi comuni e gestioni della banca con costi dell\'1,5-2,5% l\'anno','Su 20 anni un costo del 2% invece dello 0,2% si mangia circa un terzo del capitale finale.']);
+  items.push(['Inseguire l\'ETF tematico o l\'azione del momento dopo un grande rialzo','I temi di moda (intelligenza artificiale, energia pulita, cannabis…) sono già cari quando arrivano sui giornali; tienili sotto il 10% del portafoglio.']);
+  items.push(['Vendere tutto quando la borsa scende','La prova qui sotto mostra che uscire sotto le medie mobili riduce i crolli ma, su decenni, non ha mai battuto il restare investiti. I versamenti mensili comprano a sconto proprio nei ribassi.']);
+  items.push(['Broker in regime dichiarativo se non vuoi gestire le tasse da solo','Con il regime amministrato (Fineco, Scalable, Trade Republic, Directa) è la banca a calcolare e pagare il 26%: niente errori in dichiarazione.']);
+  items.push(['ETF a distribuzione se non ti servono le cedole','Ogni cedola è tassata subito al 26%: con gli ETF ad accumulo le tasse si pagano solo alla vendita e l\'interesse composto lavora su tutto.']);
+  const conc=['CSNDX.MI','ANX.MI'].reduce((a,t)=>{const e=E.find(x=>x.t==t);return a+(e&&p.hold&&p.hold[t]?p.hold[t]*e.px:0)},0),V=Object.entries(p.hold||{}).reduce((a,[t,q])=>{const e=E.find(x=>x.t==t);return a+(e?q*e.px:0)},0);
+  if(V>0&&conc/V>.3)items.unshift(['Troppo Nasdaq nel tuo portafoglio ('+pu(conc/V,0)+')','Dieci aziende tecnologiche pesano metà dell\'indice: se il settore scende del 50% come nel 2000 o del 33% come nel 2022 il tuo portafoglio lo segue.']);
+  $('#avoid').innerHTML=`<ul class="neg">${items.map(([a,b])=>`<li><b>${esc(a)}</b><br><span class="mut">${esc(b)}</span></li>`).join('')}</ul>${S.length?`<p class="sm" style="margin:10px 0 4px"><b>Azioni da evitare adesso secondo i bilanci</b></p><ul class="neg">${S.map(s=>`<li><b>${esc(s.name)}</b>: ${esc((s.bad||[]).join('; ')||'punteggio basso')}</li>`).join('')}</ul>`:''}`}
+function renderLt(){const L=(IV&&IV.lt)||{},k=Object.keys(L);if(!k.length)return;
+  const cell=r=>r?`<span class="num">${pc(r.cagr)}</span><div class="sm mut">calo max ${pc(r.maxdd,0)}</div>`:'—';
+  $('#lt').innerHTML=k.map(s=>{const x=L[s];return`<tr><td><b>${esc(x.name||s)}</b><div class="sm mut">${x.from.slice(0,4)}-${x.to.slice(0,4)}</div></td><td class="num">${Math.round(x.years)}</td><td>${cell(x.r.bh)}</td><td>${cell(x.r.ma200)}</td><td>${cell(x.r.cross)}</td><td>${cell(x.r.stack)}</td></tr>`}).join('');
+  const win=k.filter(s=>L[s].r.bh.cagr>=Math.max(L[s].r.ma200.cagr,L[s].r.cross.cagr,L[s].r.stack.cagr)).length;
+  $('#ltverd').innerHTML=`<div class="note">Restare sempre investiti ha reso di più in ${win} mercati su ${k.length}. Le medie servono a dimezzare i crolli (utile se non reggi un -50%), non a guadagnare di più. La regola 21/50/200 è stata la peggiore ovunque: esce e rientra troppo spesso. Per i versamenti mensili: compra sempre, non aspettare il segnale.</div>`}
+function renderBrokers(){const B=IV&&IV.brokers;if(!B)return;
+  $('#brokers').innerHTML=`<div class="note"><b>Consiglio:</b> tieni Fineco per il piano mensile usando solo ETF iShares, Amundi e Xtrackers (0 € di commissioni con le promozioni in corso, banca italiana con garanzia fino a 100.000 €). Se vuoi ETF di altri emittenti (es. Vanguard) o importi molto piccoli, Scalable Capital e Trade Republic fanno il PAC gratis su tutto e frazionano le quote. Il trading resta su FTMO.</div>`+
+  B.list.map(b=>`<article class="brk"><header><b>${esc(b.n)}</b><span class="pill ${b.score>=8?'up':b.score>=5?'acc':'dn'}">${b.score}/10</span></header><dl class="lv" style="margin:8px 0"><div><dt>Piano di accumulo</dt><dd class="sm">${esc(b.pac)}</dd></div><div><dt>Ordine singolo</dt><dd class="sm">${esc(b.ord)}</dd></div><div><dt>Tasse</dt><dd class="sm">${esc(b.tax)}</dd></div><div><dt>ETF</dt><dd class="sm">${esc(b.etf)}</dd></div></dl><p class="sm" style="margin:4px 0"><b>Sicurezza:</b> ${esc(b.safe)}</p><p class="sm mut" style="margin:4px 0">${esc(b.best)}</p></article>`).join('')+
+  `<p class="sm mut">Condizioni al ${new Date(B.asOf).toLocaleDateString('it-IT')}. Fonti: ${B.src.map(s=>`<a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.n)}</a>`).join(' · ')}. Le promozioni cambiano: il controllo viene rifatto ogni settimana.</p>`}
+function renderMa(){const R=((IV&&IV.strat&&IV.strat.rows)||[]).filter(r=>r.strat=='ma'||r.strat=='mas');if(!R.length)return;
+  R.sort((a,b)=>(a.cls<b.cls?-1:a.cls>b.cls?1:0)||(a.tf<b.tf?-1:1)||(a.side<b.side?-1:1)||(a.strat<b.strat?-1:1)||(a.x<b.x?-1:1));
+  const ok=r=>r.ei>.05&&r.eo>.05;
+  $('#matest').innerHTML=R.map(r=>`<tr><td>${esc(r.cls)}</td><td>${r.tf}</td><td>${r.strat=='ma'?'esponenziali':'semplici'}</td><td>${r.side=='L'?'compra':'vendi'}</td><td>${r.x}</td><td class="num">${r.ni+r.no}</td><td class="num ${cls2(r.ei)}">${sgR(r.ei)}</td><td class="num ${cls2(r.eo)}">${sgR(r.eo)}</td><td><b class="${ok(r)&&r.no>=50?'up':ok(r)?'acc':'mut'}">${ok(r)&&r.no>=50?'Regge':ok(r)?'Promettente, pochi casi':'Non regge'}</b></td></tr>`).join('');
+  $('#maverd').innerHTML=`<div class="note">Verdetto: le medie 21/50/200 funzionano solo sulle <b>cripto, grafico giornaliero, in acquisto</b>, uscendo al nuovo incrocio della 21 con la 50 (circa +0,4/+0,5R per operazione anche nel periodo mai visto). Ma sono poche operazioni (meno di 50 nel periodo di verifica) e per ora restano in osservazione. Su 4 ore, su indici, valute e nelle vendite perdono. Sul grafico sembrano seguire bene il trend perché lo guardi dopo: in tempo reale l'incrocio arriva tardi e nei mercati laterali dà molti falsi segnali.</div>`}
+// ---- obiettivo libertà finanziaria ----
+function tradeMonthly(){const R=((IV&&IV.strat&&IV.strat.rows)||[]).filter(r=>r.on);let s=0;for(const r of R)s+=r.tpm*r.eo*(r.cls=='metalli'?.01:.005);return{gross:s,real:s*.5,n:R.length}}
+function simGoal(V0,dep,inc,mo,goal,ftmo,ftmoMo){let b=V0,d=dep;for(let k=1;k<=720;k++){if(k>1&&(k-1)%12==0)d*=1+inc;b=(b+d+(ftmo?ftmo*ftmoMo*.8:0))*(1+mo);if(b>=goal)return k}return null}
+function reqDep(V0,goal,mo,n){const f=Math.pow(1+mo,n);return Math.max(0,(goal-V0*f)*mo/((f-1)*(1+mo)))}
+function renderGoal(){
+  const el=$('#goal');if(!IV||!IV.etf){el.innerHTML='<p class="empty">In attesa dei dati…</p>';return}
+  const goal=+$('#g_goal').value||1e6,V0=+$('#g_now').value||0,dep=+$('#g_dep').value||0,inc=(+$('#g_inc').value||0)/100,F=+$('#g_ftmo').value||0,Y=Math.max(1,+$('#g_years').value||15);
+  const T=tradeMonthly(),yrs=k=>k==null?'oltre 60 anni':k<12?k+' mesi':(k/12).toFixed(1).replace('.',',')+' anni';
+  const sc=[['p10','prudente'],['med','mediano'],['p90','ottimista']].map(([s,l])=>{const r=rates('plan',s);const mo=r?Math.pow(1+r.a-.002,1/12)-1:0;return{l,a:r?r.a:0,mo,k:simGoal(V0,dep,inc,mo,goal,0,0),kf:F?simGoal(V0,dep,inc,mo,goal,F,T.real):null,need:reqDep(V0,goal,mo,Y*12)}});
+  const m=sc[1],passive=goal*.04,gainShare=Math.max(0,1-(V0+dep*12*((m.k||600)/12))/goal),net=passive*(1-.26*gainShare);
+  el.innerHTML=`<div class="kpi">${sc.map(s=>`<div><dt>Scenario ${s.l} (${pc(s.a)} l'anno)</dt><dd>${yrs(s.k)}</dd>${F?`<div class="sm up">con FTMO: ${yrs(s.kf)}</div>`:''}</div>`).join('')}<div><dt>Versamento per arrivarci in ${Y} anni (mediano)</dt><dd>${eur(m.need)}/mese</dd></div><div><dt>Rendita all'obiettivo (regola del 4%)</dt><dd>${eur(net/12)}/mese</dd><div class="sm mut">netto stimato, ${eur(passive)} lordi l'anno</div></div></div>
+  <div class="note"><b>Cosa accelera davvero.</b> 1) <b>Il versamento</b>: è la leva più forte nei primi 10 anni. Con ${eur(dep)} al mese servono ${yrs(m.k)}; per farcela in ${Y} anni servono ${eur(m.need)} al mese. Ogni aumento di stipendio o entrata extra va qui. 2) <b>FTMO</b>: un conto finanziato ti fa guadagnare l'80% dei profitti su capitale non tuo. Le strategie accese nel laboratorio fanno in media ${pc(T.gross,2)} al mese sul conto se prese tutte; contando i limiti di posizioni e i mercati che si muovono insieme stimo ${pc(T.real,2)}${F?`, cioè circa ${eur(F*T.real*.8)} al mese per te su ${eur(F)}, reinvestiti qui`:''}. Prima va superata la sfida (obiettivo +10%, poi +5%, senza perdere più del 5% in un giorno o del 10% in totale). 3) <b>Il rendimento</b>: alzarlo prendendo più rischio (leva, una sola azione, cripto in blocco) accorcia i tempi solo se va bene e li allunga di anni se va male: è l'unica leva che non spingo oltre i dati.</div>
+  <p class="sm mut">Rendimenti del piano: periodi reali di 5 anni degli ETF del tuo profilo, meno lo 0,2% di bollo. Il versamento cresce del ${pu(inc,0)} ogni anno. FTMO conta solo se il conto è già finanziato; i risultati di trading variano molto di mese in mese.</p>`}
+function renderInv(){renderGoal();renderEtf();renderStocks();renderAvoid();renderLt();renderBrokers();renderMa();if(!$('#p_hold').children.length||!$('#p_hold').querySelector('input'))renderHold((PR&&PR.hold)||{});renderCalcOpts();renderPlan()}
+async function loadInv(){try{const c=new AbortController(),tm=setTimeout(()=>c.abort(),15000);const r=await fetch(INV_API,{signal:c.signal,cache:'no-store'});clearTimeout(tm);if(!r.ok)throw new Error('server '+r.status);IV=await r.json();renderInv()}catch(e){$('#stocks').innerHTML='<div class="empty">Dati investimenti non raggiungibili ('+esc(e.message)+'). Riprovo tra poco.</div>'}}
+function showTab(t){TAB=t;LS.set('tab',t);$('#tab-trading').hidden=t!='trading';$('#tab-inv').hidden=t!='investimenti';document.querySelectorAll('.tr-only').forEach(x=>x.hidden=t!='trading');document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab==t));if(t=='investimenti'){calc()}else draw()}
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+document.addEventListener('click',e=>{const r=e.target.closest('tr.epick');if(r&&!e.target.closest('a')){$('#c_inst').value='e:'+r.dataset.e;calc();$('#c_inst').scrollIntoView({behavior:'smooth',block:'center'})}});
+for(const id of ['c_inst','c_cap','c_dep','c_mo','c_sc','c_risk','c_pct','c_tax'])$('#'+id).addEventListener('input',calc);
+for(const id of ['p_m','p_h','p_r','p_b','p_cash','p_em'])$('#'+id).addEventListener('input',()=>{PR=readForm();renderPlan();renderAvoid();calc()});
+$('#p_hold').addEventListener('input',()=>{PR=readForm();renderPlan();renderAvoid()});
+for(const id of ['g_goal','g_now','g_dep','g_inc','g_ftmo','g_years'])$('#'+id).addEventListener('input',()=>{PR={...(PR||readForm()),goal:{v:+$('#g_goal').value,now:+$('#g_now').value,dep:+$('#g_dep').value,inc:+$('#g_inc').value,ftmo:+$('#g_ftmo').value,y:+$('#g_years').value}};LS.set('goal',PR.goal);renderGoal()});
+{const g=LS.get('goal',null);if(g){$('#g_goal').value=g.v||1e6;$('#g_now').value=g.now||0;$('#g_dep').value=g.dep??300;$('#g_inc').value=g.inc??3;$('#g_ftmo').value=String(g.ftmo||0);$('#g_years').value=g.y||15}}
+$('#p_save').onclick=()=>savePlan(false);$('#p_load').onclick=loadPlan;
+$('#p_pin').value=LS.get('pin','');
+document.addEventListener('click',e=>{const r=e.target.closest('tr.pick');if(r){SEL={sym:r.dataset.s,tf:r.dataset.t=='—'?'1d':r.dataset.t};save();render()}const b=e.target.closest('[data-tf]');if(b){SEL.tf=b.dataset.tf;save();render()}});
+$('#bscan').onclick=()=>{scan();loadInv()};
+$('#bsound').onclick=()=>{snd=!snd;if(snd){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume()}catch(e){}try{window.Notification&&Notification.requestPermission()}catch(e){}}$('#bsound').textContent=snd?'Avvisi sonori attivi':'Attiva avvisi sonori'};
+for(const id of ['cap','risk']){const el=$('#'+id),sv=LS.get(id,null);if(sv!=null)el.value=sv;el.onchange=()=>{LS.set(id,el.value);render()}}
+window.addEventListener('resize',()=>{if(TAB=='investimenti')calc();else draw()});
+setInterval(()=>{next--;if(next<=0){next=60;scan()}$('#cd').textContent=Math.max(0,next)},1000);
+setInterval(livePx,15000);
+render();scan();showTab(TAB);loadInv().then(()=>{if(LS.get('pin','')&&!PR)loadPlan()});setInterval(loadInv,6e5);
+</script>
+</body>
+</html>
