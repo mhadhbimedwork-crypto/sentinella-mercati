@@ -17,7 +17,7 @@ try {
   const below = x => C.filter(c => c.ath_change_percentage <= -x).length / C.length;
   OUT.cripto = {
     n: C.length, sotto80: rd(below(80), 3), sotto50: rd(below(50), 3), sopra100_1anno: rd(C.filter(c => c.price_change_percentage_1y_in_currency >= 100).length / C.length, 3), negativi_1anno: rd(C.filter(c => c.price_change_percentage_1y_in_currency < 0).length / C.length, 3),
-    lista: C.filter(c => c.market_cap_rank >= 30 && c.market_cap_rank <= 400 && c.market_cap >= 3e7).map(c => {
+    lista: C.filter(c => c.market_cap_rank >= 30 && c.market_cap_rank <= 400 && c.market_cap >= 1e8 && c.price_change_percentage_1y_in_currency != null && c.total_volume / c.market_cap >= 0.02).map(c => {
       const p30 = c.price_change_percentage_30d_in_currency, p200 = c.price_change_percentage_200d_in_currency, p1y = c.price_change_percentage_1y_in_currency, vm = c.total_volume / c.market_cap, ath = c.ath_change_percentage;
       const s = (p200 > 0 ? 2 : 0) + (p30 > 0 ? 1 : 0) + (vm >= 0.05 ? 1 : 0) + (ath <= -30 && ath >= -85 ? 1 : 0) + (p1y > 0 ? 1 : 0);
       return { id: c.id, sym: c.symbol.toUpperCase(), n: c.name, rank: c.market_cap_rank, px: c.current_price, mcap: c.market_cap, vm: rd(vm, 3), p30: rd(p30 / 100), p200: rd(p200 / 100), p1y: rd(p1y / 100), ath: rd(ath / 100), xAth: rd(c.ath / c.current_price, 1), s }
