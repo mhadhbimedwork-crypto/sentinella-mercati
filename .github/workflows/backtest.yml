@@ -1,15 +1,21 @@
-name: Backtest strategie
+name: Ottimizzazione automatica
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * 0'   # ogni domenica notte
+    - cron: '41 4 * * 3'   # e ogni mercoledi' notte
   push:
     branches: [main]
     paths: ['backtest/**']
 permissions:
   contents: write
+concurrency:
+  group: ottimizzazione
+  cancel-in-progress: false
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,10 +23,12 @@ jobs:
           node-version: 20
       - run: node --max-old-space-size=6000 backtest/run.mjs
       - run: node --max-old-space-size=6000 backtest/run2.mjs
+      - run: node backtest/luna.mjs
+      - run: pip install --quiet openpyxl && python3 backtest/excel.py
       - run: |
           git config user.name "sentinella-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add risultati/backtest.json risultati/backtest2.json
-          git commit -m "Risultati backtest" || echo "niente da salvare"
+          git add risultati
+          git commit -m "Ottimizzazione automatica: risultati aggiornati" || echo "niente da salvare"
           git pull --rebase origin main
           git push origin main

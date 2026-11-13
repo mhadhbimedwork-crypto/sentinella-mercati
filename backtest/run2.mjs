@@ -76,4 +76,11 @@ if (uni.length >= 2) {
   const pick = lim => scan.filter(s => s.dd >= -lim).pop() || null;
   OUT.unito = { parti: uni.map(c => `${c.g.cls} ${c.g.tf}`), from: new Date(t0).toISOString().slice(0, 10), split: new Date(ts).toISOString().slice(0, 10), to: new Date(t1).toISOString().slice(0, 10), scan, perFtmo: pick(0.08), perCapitaleProprio: pick(0.25) }
 }
+if (!SYN) { // storico: una riga per esecuzione, per vedere se le scelte restano stabili nel tempo
+  let H = []; try { H = JSON.parse(fs.readFileSync('risultati/storico.json', 'utf8')) } catch (e) { }
+  const key = f => f ? [f.fam, JSON.stringify(f.par), f.sd, f.td, f.be, f.ts, f.reg, f.rs].join('|') : null;
+  H.push({ at: OUT.at, scelte: OUT.groups.map(g => ({ g: g.cls + ' ' + g.tf, k: key(g.scelta), name: g.scelta?.name, cagr: g.scelta?.all.cagr, dd: g.scelta?.all.dd, oos: g.scelta?.oos.cagr })), ftmo: OUT.unito?.perFtmo && { risk: OUT.unito.perFtmo.risk, cagr: OUT.unito.perFtmo.cagr, dd: OUT.unito.perFtmo.dd } });
+  OUT.conferme = OUT.groups.map(g => { const k = key(g.scelta); let n = 0; for (let i = H.length - 1; i >= 0; i--) { const x = H[i].scelte.find(s => s.g == g.cls + ' ' + g.tf); if (x && x.k == k && k) n++; else break } return { g: g.cls + ' ' + g.tf, volte: n } });
+  fs.mkdirSync('risultati', { recursive: true }); fs.writeFileSync('risultati/storico.json', JSON.stringify(H.slice(-200)))
+}
 fs.mkdirSync('risultati', { recursive: true }); fs.writeFileSync(SYN ? 'risultati/test2_sintetico.json' : 'risultati/backtest2.json', JSON.stringify(OUT)); console.log('fatto');
