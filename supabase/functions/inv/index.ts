@@ -28,6 +28,25 @@ const ETF=[
  {t:'XEON.MI',isin:'LU0290358497',n:'Xtrackers EUR Overnight Rate Swap',k:'liquidità',a:'Tasso overnight euro (parcheggio)',ter:.10,z:1},
  {t:'SGLD.MI',isin:'IE00B579F325',n:'Invesco Physical Gold ETC',k:'oro',a:'Oro fisico',ter:.12,z:0},
 ];
+// Temi in crescita per la parte "satellite": il motore ogni mese sceglie i piu' forti (momento a 3, 6 e 12 mesi) e li compra solo con i soldi nuovi.
+const THEMES=[
+ {t:'XAIX.MI',isin:'IE00BGV5VN51',n:'Xtrackers Artificial Intelligence & Big Data',k:'tema',a:'Intelligenza artificiale',ter:.35,z:1},
+ {t:'SMH.MI',isin:'IE00BMC38736',n:'VanEck Semiconductor',k:'tema',a:'Semiconduttori (chip)',ter:.35,z:0},
+ {t:'XDWT.MI',isin:'IE00BM67HT60',n:'Xtrackers MSCI World Information Technology',k:'tema',a:'Tecnologia',ter:.25,z:1},
+ {t:'RBOT.MI',isin:'IE00BYZK4552',n:'iShares Automation & Robotics',k:'tema',a:'Robotica e automazione',ter:.40,z:1},
+ {t:'XDWH.MI',isin:'IE00BM67HK77',n:'Xtrackers MSCI World Health Care',k:'tema',a:'Sanità',ter:.25,z:1},
+ {t:'HEAL.MI',isin:'IE00BYZK4776',n:'iShares Healthcare Innovation',k:'tema',a:'Innovazione medica e biotech',ter:.40,z:1},
+ {t:'LOCK.MI',isin:'IE00BG0J4C88',n:'iShares Digital Security',k:'tema',a:'Cybersicurezza',ter:.40,z:1},
+ {t:'JEDI.MI',isin:'IE000YU9K6K2',n:'VanEck Space Innovators',k:'tema',a:'Spazio',ter:.55,z:0},
+ {t:'DFNS.MI',isin:'IE000YYE6WK5',n:'VanEck Defense',k:'tema',a:'Difesa',ter:.55,z:0},
+ {t:'INRG.MI',isin:'IE00B1XNHC34',n:'iShares Global Clean Energy Transition',k:'tema',a:'Energia pulita',ter:.65,z:1},
+ {t:'URNU.MI',isin:'IE000NDWFGA5',n:'Global X Uranium',k:'tema',a:'Uranio e nucleare',ter:.65,z:0},
+ {t:'XDW0.MI',isin:'IE00BM67HM91',n:'Xtrackers MSCI World Energy',k:'tema',a:'Petrolio e gas',ter:.25,z:1},
+ {t:'XDWI.MI',isin:'IE00BM67HV82',n:'Xtrackers MSCI World Industrials',k:'tema',a:'Industria',ter:.25,z:1},
+ {t:'XDWF.MI',isin:'IE00BM67HL84',n:'Xtrackers MSCI World Financials',k:'tema',a:'Banche e finanza',ter:.25,z:1},
+ {t:'NDIA.MI',isin:'IE00BZCQB185',n:'iShares MSCI India',k:'tema',a:'India',ter:.65,z:1},
+ {t:'GDX.MI',isin:'IE00BQQP9F84',n:'VanEck Gold Miners',k:'tema',a:'Miniere d\'oro',ter:.53,z:0},
+];
 // Aziende USA (bilanci ufficiali dalla SEC). Banche escluse: per loro il flusso di cassa libero non ha senso.
 const STK=['AAPL','MSFT','NVDA','GOOGL','AMZN','META','AVGO','TSLA','LLY','V','MA','UNH','JNJ','PG','KO','PEP','COST','WMT','XOM','HD','MCD','ORCL','NFLX','AMD','ADBE','CRM','ABBV','MRK','ASML','NVO'];
 const NAMES={AAPL:'Apple',MSFT:'Microsoft',NVDA:'Nvidia',GOOGL:'Alphabet (Google)',AMZN:'Amazon',META:'Meta',AVGO:'Broadcom',TSLA:'Tesla',LLY:'Eli Lilly',V:'Visa',MA:'Mastercard',UNH:'UnitedHealth',JNJ:'Johnson & Johnson',PG:'Procter & Gamble',KO:'Coca-Cola',PEP:'PepsiCo',COST:'Costco',WMT:'Walmart',XOM:'Exxon Mobil',HD:'Home Depot',MCD:"McDonald's",ORCL:'Oracle',NFLX:'Netflix',AMD:'AMD',ADBE:'Adobe',CRM:'Salesforce',ABBV:'AbbVie',MRK:'Merck',ASML:'ASML',NVO:'Novo Nordisk'};
@@ -123,10 +142,44 @@ function score(f,px,st){
   if(verdict==='Interessante'&&fy!=null&&fy<.025){verdict='Da tenere d\'occhio';bad.push('azienda solida ma prezzo pieno ('+pct(fy)+' di cassa libera sul valore di borsa): meglio comprarla dentro un ETF o aspettare un ribasso')}
   return{score:s,verdict,why,bad,growth:g,nm,fm,fy,pe,mcap,nd,alloc}}
 
+// ---- motore satellite: momento dei temi e prova storica con versamenti mensili ----
+function monthly(t,c){const m=new Map();for(let i=0;i<t.length;i++){const d=new Date(t[i]);m.set(d.getUTCFullYear()*12+d.getUTCMonth(),c[i])}return m}
+function momScore(mm,k){const g=(a,b)=>{const x=mm.get(k-a),y=mm.get(k-b);return x&&y?x/y-1:null};const m3=g(0,3),m6=g(0,6),m12=g(1,12);if(m3==null||m6==null||m12==null)return null;return{m3,m6,m12,s:(m3+m6+m12)/3}}
+function irr(flows,last){let lo=-.99,hi=2;for(let it=0;it<80;it++){const mid=(lo+hi)/2,r=Math.pow(1+mid,1/12)-1;let v=0;for(let i=0;i<flows.length;i++)v+=flows[i]*Math.pow(1+r,flows.length-i);if(v>last)hi=mid;else lo=mid}return(lo+hi)/2}
+function satBacktest(H,core,share,topN){
+  const C=H[core];if(!C)return null;const ks=[...C.keys()].sort((a,b)=>a-b),th=Object.keys(H).filter(t=>t!==core&&t!=='XEON.MI');
+  const start=ks.find(k=>th.filter(t=>momScore(H[t],k)).length>=4);if(start==null)return null;
+  const S={core:{},eq:{},mom:{},all:{}};for(const x in S)S[x]={u:{},flows:[],nav:[],pk:0,dd:0};
+  const val=(x,k)=>Object.entries(S[x].u).reduce((a,[t,u])=>a+u*(H[t].get(k)||0),0);
+  const buy=(x,t,amt,k)=>{const p=H[t].get(k);if(!p)return false;S[x].u[t]=(S[x].u[t]||0)+amt/p;return true};
+  let prevV={},picksLog=[];
+  for(const k of ks){if(k<start)continue;const avail=th.filter(t=>H[t].get(k)),sc=avail.map(t=>({t,m:momScore(H[t],k)})).filter(x=>x.m).sort((a,b)=>b.m.s-a.m.s);
+    const top=sc.filter(x=>x.m.m12>0).slice(0,topN);
+    for(const x in S){const v0=val(x,k);if(prevV[x]>0){const r=v0/prevV[x];S[x].nav.push((S[x].nav.at(-1)||1)*r)}}
+    buy('core',core,100,k);
+    buy('eq',core,100*(1-share),k);if(sc.length)for(const y of sc)buy('eq',y.t,100*share/sc.length,k);else buy('eq',core,100*share,k);
+    buy('mom',core,100*(1-share),k);if(top.length)for(const y of top)buy('mom',y.t,100*share/top.length,k);else buy('mom',core,100*share,k);
+    const topA=[{t:core,m:momScore(C,k)},...sc].filter(x=>x.m&&x.m.m12>0).sort((a,b)=>b.m.s-a.m.s).slice(0,topN);if(topA.length)for(const y of topA)buy('all',y.t,100/topA.length,k);else buy('all',core,100,k);
+    for(const x in S){S[x].flows.push(100);prevV[x]=val(x,k)}
+    if(k===ks.at(-1))picksLog=top.map(y=>y.t)}
+  const last=ks.at(-1),out={from:new Date(Date.UTC(Math.floor(start/12),start%12,1)).toISOString().slice(0,7),to:new Date(Date.UTC(Math.floor(last/12),last%12,1)).toISOString().slice(0,7),months:S.core.flows.length,r:{}};
+  for(const x in S){const v=val(x,last),inv=S[x].flows.reduce((a,b)=>a+b,0);let pk=0,dd=0;for(const n of S[x].nav){pk=Math.max(pk,n);dd=Math.min(dd,n/pk-1)}
+    out.r[x]={irr:irr(S[x].flows,v),mult:v/inv,dd}}
+  return out}
+async function refreshSat(etfOut){
+  const H={},meta={};for(const e of [...ETF.filter(e=>e.t==='SWDA.MI'),...THEMES]){try{const h=await chart(e.t);H[e.t]=monthly(h.t,h.c);meta[e.t]={...e,px:h.px,...stats(h.t,h.c)}}catch(err){}}
+  const k=Math.max(...[...H['SWDA.MI'].keys()]),now=Object.keys(H).filter(t=>t!=='SWDA.MI').map(t=>({t,m:momScore(H[t],k)})).filter(x=>x.m).sort((a,b)=>b.m.s-a.m.s);
+  const bt2=satBacktest(H,'SWDA.MI',.2,2),bt3=satBacktest(H,'SWDA.MI',.2,3);
+  const rank=now.map(x=>{const e=meta[x.t];delete e.spark;delete e.yearly;return{...e,m3:x.m.m3,m6:x.m.m6,m12:x.m.m12,s:x.m.s}});
+  const themes=THEMES.filter(t=>!rank.some(r=>r.t===t.t)).map(t=>meta[t.t]?{...meta[t.t],spark:undefined,yearly:undefined,young:true}:{...t,err:'storia non disponibile'});
+  await sb.from('state').upsert({key:'inv_sat',value:{t:Date.now(),rank,young:themes,bt2,bt3,picks:rank.filter(r=>r.m12>0).slice(0,2).map(r=>r.t)}});
+  return rank.length}
 async function refreshEtf(){
   const out=[];
   for(const e of ETF){try{const h=await chart(e.t);out.push({...e,px:h.px,cur:h.cur,...stats(h.t,h.c)})}catch(err){out.push({...e,err:String(err).slice(0,80)})}}
-  await sb.from('state').upsert({key:'inv_etf',value:{t:Date.now(),etf:out}});return out.length}
+  await sb.from('state').upsert({key:'inv_etf',value:{t:Date.now(),etf:out}});
+  try{await refreshSat(out)}catch(e){await sb.from('state').upsert({key:'inv_sat',value:{t:Date.now(),err:String(e).slice(0,200)}})}
+  return out.length}
 async function refreshStocks(max=4){
   const {data:have}=await sb.from('inv_fund').select('sym,updated_at');const age={};for(const h of have||[])age[h.sym]=Date.parse(h.updated_at);
   const todo=STK.filter(s=>!age[s]||Date.now()-age[s]>20*36e5).slice(0,max),done=[];
@@ -142,8 +195,8 @@ Deno.serve(async req=>{
   if(req.method==='OPTIONS')return new Response(null,{headers:CORS});
   try{
     if(req.method==='GET'){
-      const [{data:e},{data:l},{data:b},{data:f},{data:ss}]=await Promise.all([sb.from('state').select('value').eq('key','inv_etf').maybeSingle(),sb.from('state').select('value').eq('key','lt').maybeSingle(),sb.from('state').select('value').eq('key','brokers').maybeSingle(),sb.from('inv_fund').select('data,updated_at'),sb.from('state').select('value').eq('key','strat_stats').maybeSingle()]);
-      return J({etf:e?.value||null,lt:l?.value||null,brokers:b?.value||null,strat:ss?.value||null,stocks:(f||[]).map(x=>({...x.data,at:x.updated_at}))})}
+      const [{data:e},{data:l},{data:b},{data:f},{data:ss},{data:sat}]=await Promise.all([sb.from('state').select('value').eq('key','inv_etf').maybeSingle(),sb.from('state').select('value').eq('key','lt').maybeSingle(),sb.from('state').select('value').eq('key','brokers').maybeSingle(),sb.from('inv_fund').select('data,updated_at'),sb.from('state').select('value').eq('key','strat_stats').maybeSingle(),sb.from('state').select('value').eq('key','inv_sat').maybeSingle()]);
+      return J({etf:e?.value||null,lt:l?.value||null,brokers:b?.value||null,strat:ss?.value||null,sat:sat?.value||null,stocks:(f||[]).map(x=>({...x.data,at:x.updated_at}))})}
     const body=await req.json().catch(()=>({}));
     if(body.act==='refresh'){
       const {data}=await sb.from('state').select('value').eq('key','cfg').maybeSingle();
