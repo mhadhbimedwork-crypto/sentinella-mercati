@@ -1,0 +1,25 @@
+name: Backtest strategie
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['backtest/**']
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --max-old-space-size=6000 backtest/run.mjs
+      - run: |
+          git config user.name "sentinella-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add risultati/backtest.json
+          git commit -m "Risultati backtest" || echo "niente da salvare"
+          git pull --rebase origin main
+          git push origin main
