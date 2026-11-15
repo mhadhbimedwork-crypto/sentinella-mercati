@@ -4,6 +4,7 @@
 // Fase 2: 10 prove di robustezza sui finalisti. Capitale iniziale 10.000, rischio 1% per operazione.
 import fs from 'node:fs';
 export const SYN = process.argv.includes('--synthetic');
+export const EXCH = process.env.COSTI === 'exchange';
 const CAP = 10000, RISK = 0.01, MAXOPEN = 6, YR = 365.25 * 864e5;
 const U = [
   ...['BTC', 'ETH', 'BNB', 'XRP', 'SOL', 'ADA', 'DOGE', 'AVAX', 'DOT', 'LINK', 'LTC'].map(s => ({ sym: s + 'USDT', src: 'b', cls: 'cripto', cost: s == 'BTC' || s == 'ETH' ? 0.001 : 0.002, hc: 0.0005 })),
@@ -114,4 +115,5 @@ function port(T, t0, t1, o = {}) {
 const score = p => p.n >= 40 ? p.cagr / Math.max(-p.dd, 0.05) : -9;
 const rd = (x, k = 4) => x == null || !isFinite(x) ? null : +x.toFixed(k);
 const slim = p => ({ n: p.n, wr: rd(p.wr), avgR: rd(p.avgR), eq: rd(p.eq, 0), cagr: rd(p.cagr), dd: rd(p.dd), yrs: rd(p.yrs, 2), pos: rd(p.pos, 2) });
+if (EXCH) for (const u of U) if (u.cls == 'cripto') { u.cost = 0.002; u.hc = 0 }
 export { U, CAP, RISK, MAXOPEN, YR, W0, histB, histY, synth, prep, ENT, NAMES, GRID, EXIT_TRAIL, cart, port, score, rd, slim, sleep, ema };
