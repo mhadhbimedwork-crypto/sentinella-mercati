@@ -123,4 +123,20 @@ if os.path.exists('risultati/backtest2.json'):
         ws.append([]);ws.append([f"Portafoglio: {', '.join(u['parti'])} insieme, {u['from']} - {u['to']}, capitale iniziale 10.000 €, massimo 10 posizioni aperte."])
         ws.append([f"Per FTMO (calo entro 8%): rischio {u['perFtmo']['risk']*100}% per operazione. Per capitale proprio (calo entro 25%): rischio {u['perCapitaleProprio']['risk']*100}%."])
     wb.save('risultati/RISULTATI_TEST.xlsx')
+
+if os.path.exists('risultati/agenti.json'):
+    A=json.load(open('risultati/agenti.json'))
+    rows=[]
+    for a in A['agenti']:
+        r=a.get('ris') or {}; i=r.get('is') or {}; o=r.get('oos') or {}; al=r.get('all') or {}; x=a.get('costiDoppi') or {}
+        if 'oos' in x: x=x['oos'] or {}
+        rows.append([a['nome'],a['stato'],a['ipotesi'],a['regole'],a.get('prove'),a.get('operazioni'),a.get('tStat') or al.get('t'),pc(i.get('cagr')),pc(i.get('dd')),pc(o.get('cagr')),pc(o.get('dd')),pc(al.get('cagr')),pc(al.get('dd')),al.get('eq'),pc(x.get('cagr'))])
+    ws=sh('Agenti',['Agente','Stato','Ipotesi','Regole scelte','Varianti provate','Operazioni','Statistica t','Rend. annuo scelta %','Calo scelta %','Rend. annuo mai visto %','Calo mai visto %','Rend. annuo totale %','Calo max %','10.000 € diventano','Mai visto con costi doppi %'],rows,{1:36,2:16,3:60,4:70})
+    for r in ws.iter_rows(min_row=2):
+        for c in r: c.alignment=Alignment(wrap_text=True,vertical="top")
+    rows=[]
+    for m in A.get('mappe',[]):
+        for f in m['fasce']: rows.append([m['sym'],m['px'],m['at'],f['lato'],f['prezzo'],pc(f['distanza']),pc(f['quota'])])
+    sh('Mappa liquidazioni',['Mercato','Prezzo','Aggiornata','Lato','Prezzo della fascia','Distanza %','Quota delle liquidazioni stimate %'],rows,{3:26})
+    wb.save('risultati/RISULTATI_TEST.xlsx')
 for g,f in fin3: print(g['cls'],g['tf'],f['name'],f['par'],f['sd'],f['td'],f['all'],'oos',f['oos'],'x2',f['t14_costiDoppi']['oos']['cagr'],'r05',f['t17_rischio'][0])

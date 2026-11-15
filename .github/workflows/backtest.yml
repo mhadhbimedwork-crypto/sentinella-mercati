@@ -24,6 +24,10 @@ jobs:
       - run: node --max-old-space-size=6000 backtest/run.mjs
       - run: node --max-old-space-size=6000 backtest/run2.mjs
       - run: node backtest/luna.mjs
+      - run: python3 backtest/dati_futures.py
+        continue-on-error: true
+      - run: node --max-old-space-size=6000 backtest/run3.mjs
+        continue-on-error: true
       - run: pip install --quiet openpyxl && python3 backtest/excel.py
       - run: |
           git config user.name "sentinella-bot"
