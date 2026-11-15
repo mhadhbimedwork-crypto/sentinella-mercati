@@ -16,14 +16,15 @@ function trades(S, delay = 0) {
     for (let j = j0; j < K.n; j++) { if (K.l[j] <= stop) { r = (Math.min(stop, K.o[j]) - E) / SD; jx = j; break } best = Math.max(best, K.h[j]); stop = Math.max(stop, best - TD); if (j - j0 >= P.ts && K.c[j] - E < 0.5 * SD) { r = (K.c[j] - E) / SD; jx = j; break } }
     if (r == null) r = (K.c[K.n - 1] - E) / SD; busy = jx;
     const days = (K.t[jx] - K.t[j0]) / 864e5 + MS / 864e5, r1 = K.tb[i] / K.v[i]; let s3 = 0, v3 = 0; for (let b = i - 5; b <= i; b++) { s3 += K.tb[b]; v3 += K.v[b] }
-    out.push([K.t[j0], K.t[jx] + MS, r, (S.cost + S.hc * days) * E / SD, S.ix, K.t[i], i >= 90 ? K.c[i] / K.c[i - 90] - 1 : 0, r1, s3 / v3])
+    let cd = 0, cv = 0; for (let b = i - 11; b <= i; b++) { cd += 2 * K.tb[b] - K.v[b]; cv += K.v[b] }
+    out.push([K.t[j0], K.t[jx] + MS, r, (S.cost + S.hc * days) * E / SD, S.ix, K.t[i], i >= 90 ? K.c[i] / K.c[i - 90] - 1 : 0, r1, s3 / v3, cd / cv])
   }
   return out
 }
 let T = []; for (const S of series) T = T.concat(trades(S)); T.sort((a, b) => a[0] - b[0]);
 const base = T.filter(t => { const m = M.get(t[5]); return !m || (m.a / m.n >= 0.5 && t[6] >= m.med) });
 const res = [];
-for (const [nome, f] of [['base (come oggi)', () => true], ['barra: compratori >50%', t => t[7] > 0.5], ['barra: compratori >52%', t => t[7] > 0.52], ['barra: compratori >55%', t => t[7] > 0.55], ['6 barre: compratori >50%', t => t[8] > 0.5], ['6 barre: compratori >52%', t => t[8] > 0.52], ['barra: compratori <50% (contrario)', t => t[7] < 0.5]]) {
+for (const [nome, f] of [['base (come oggi)', () => true], ['barra: compratori >50%', t => t[7] > 0.5], ['barra: compratori >52%', t => t[7] > 0.52], ['barra: compratori >55%', t => t[7] > 0.55], ['6 barre: compratori >50%', t => t[8] > 0.5], ['6 barre: compratori >52%', t => t[8] > 0.52], ['delta cumulativo 12 barre >0', t => t[9] > 0], ['delta cumulativo 12 barre >+4%', t => t[9] > 0.04], ['delta cumulativo 12 barre <0 (contrario)', t => t[9] < 0], ['barra: compratori <50% (contrario)', t => t[7] < 0.5]]) {
   const F = base.filter(f); res.push({ nome, is: slim(port(F, t0, ts)), oos: slim(port(F, ts, t1)), all: slim(port(F, t0, t1)) });
   console.log(nome, 'n', F.length, 'is', rd(port(F, t0, ts).cagr), 'oos', rd(port(F, ts, t1).cagr), rd(port(F, ts, t1).dd))
 }
