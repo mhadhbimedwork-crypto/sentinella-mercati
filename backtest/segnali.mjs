@@ -18,8 +18,9 @@ for (const s of S) {
     for (let j = j0; j < n; j++) { if (K.l[j] <= stop) { closed = true; busy = j; break } best = Math.max(best, K.h[j]); stop = Math.max(stop, best - TD); if (j - j0 >= P.ts && K.c[j] - E < 0.5 * SD) { closed = true; busy = j; break } }
     if (!closed) { busy = n; pos = { entrata: E, dal: new Date(K.t[j0]).toISOString(), stop: +stop.toPrecision(6), R: +((K.c[n - 1] - E) / SD).toFixed(2), barre: n - j0 } }
   }
+  const sm = K.sma(20), sdv = K.sd(20), e2 = K.ema(200), N = 120, from = n - N, serie = { t: K.t.slice(from), c: K.c.slice(from), up: Array.from({ length: N }, (_, q) => +(sm[from + q] + P.k * sdv[from + q]).toPrecision(6)), e: e2.slice(from).map(x => +x.toPrecision(6)) };
   const i = n - 1, a = K.atr[i], px = K.c[i], nuovo = sig[i] === 1 && !pos, okRegime = breadth >= 0.5, okRS = s.rs >= med;
   const stopNuovo = px - P.sd * a, perUnita = px - stopNuovo, qty = CAP * P.risk / perUnita;
-  out.mercati.push({ sym: s.u.sym.replace('USDT', ''), px, forza90: +s.rs.toFixed(3), segnaleNuovo: nuovo, puoiEntrare: nuovo && okRegime && okRS, motivoNo: nuovo ? (!okRegime ? 'mercato debole (meno della metà sopra la media a 200)' : !okRS ? 'forza relativa sotto la mediana' : null) : null, stopIniziale: +stopNuovo.toPrecision(6), quantita: +qty.toPrecision(3), valore: Math.round(qty * px), posizioneAperta: pos })
+  out.mercati.push({ sym: s.u.sym.replace('USDT', ''), px, livelloAcquisto: serie.up[N - 1], sopraEma200: px > e2[i], serie, forza90: +s.rs.toFixed(3), segnaleNuovo: nuovo, puoiEntrare: nuovo && okRegime && okRS, motivoNo: nuovo ? (!okRegime ? 'mercato debole (meno della metà sopra la media a 200)' : !okRS ? 'forza relativa sotto la mediana' : null) : null, stopIniziale: +stopNuovo.toPrecision(6), quantita: +qty.toPrecision(3), valore: Math.round(qty * px), posizioneAperta: pos })
 }
 fs.mkdirSync('risultati', { recursive: true }); fs.writeFileSync('risultati/segnali.json', JSON.stringify(out)); console.log(JSON.stringify(out.regime), out.mercati.map(m => m.sym + (m.puoiEntrare ? '*' : m.posizioneAperta ? '+' : '')).join(' '));
