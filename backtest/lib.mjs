@@ -21,7 +21,7 @@ async function histB(sym, tf, n) {
     for (const b of ['https://data-api.binance.vision', 'https://api.binance.com']) { try { const r = await fetch(b + '/api/v3/klines?symbol=' + sym + '&interval=' + tf + '&limit=1000' + (end ? '&endTime=' + end : '')); if (!r.ok) throw new Error('http ' + r.status); j = await r.json(); break } catch (e) { err = e } }
     if (!j) throw err; if (!j.length) break; out = j.concat(out); end = +j[0][0] - 1; if (j.length < 1000) break
   }
-  return out.slice(0, -1).map(r => [+r[0], +r[1], +r[2], +r[3], +r[4], +r[5]])
+  return out.slice(0, -1).map(r => [+r[0], +r[1], +r[2], +r[3], +r[4], +r[5], +r[9]])
 }
 async function histY(sym) {
   let err;
@@ -46,7 +46,7 @@ function rsi(c, p) { const o = new Float64Array(c.length).fill(50); let g = 0, l
 function prevExt(a, p, mx) { const o = new Float64Array(a.length).fill(NaN); for (let i = p; i < a.length; i++) { let m = a[i - 1]; for (let j = i - p; j < i - 1; j++) m = mx ? Math.max(m, a[j]) : Math.min(m, a[j]); o[i] = m } return o }
 function sd(a, p) { const m = sma(a, p), o = new Float64Array(a.length).fill(NaN); for (let i = p - 1; i < a.length; i++) { let s = 0; for (let j = i - p + 1; j <= i; j++)s += (a[j] - m[i]) ** 2; o[i] = Math.sqrt(s / p) } return o }
 function prep(raw, ms) {
-  const K = { ms, t: raw.map(r => r[0]), o: raw.map(r => r[1]), h: raw.map(r => r[2]), l: raw.map(r => r[3]), c: raw.map(r => r[4]), v: raw.map(r => r[5]), _: {} };
+  const K = { ms, t: raw.map(r => r[0]), o: raw.map(r => r[1]), h: raw.map(r => r[2]), l: raw.map(r => r[3]), c: raw.map(r => r[4]), v: raw.map(r => r[5]), tb: raw.map(r => r[6]), _: {} };
   const { h, l, c } = K, n = c.length;
   const tr = c.map((x, i) => i ? Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1])) : h[i] - l[i]);
   K.atr = wilder(tr, 14);
