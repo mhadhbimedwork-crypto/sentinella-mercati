@@ -23,7 +23,13 @@ function trades2(S, sig, x, be, ts, delay = 0) {
   return out
 }
 const groups = [{ cls: 'cripto', tf: '1d', ms: 864e5 }, { cls: 'cripto', tf: '4h', ms: 144e5 }, { cls: 'metalli', tf: '1d', ms: 864e5 }, { cls: 'indici', tf: '1d', ms: 864e5 }];
-const FAMS = ['don', 'donadx', 'bb', 'kelt'], REG = ['n', 'breadth', 'leader'], RS = [0, 1], BE = [0, 2], TS = [0, 10];
+const FAMS = ['don', 'donadx', 'bb', 'kelt', 'st', 'mom'], REG = ['n', 'breadth', 'leader'], RS = [0, 1], BE = [0, 2], TS = [0, 10];
+// varianti nuove a ogni esecuzione (seme = mezza giornata): parametri casuali provati con tutta la griglia di uscite
+let sd_ = Math.floor(Date.now() / 432e5) >>> 0; const rnd = () => (sd_ = (sd_ * 1664525 + 1013904223) >>> 0) / 4294967296;
+const pick = a => a[Math.floor(rnd() * a.length)], ri = (a, b) => a + Math.floor(rnd() * (b - a + 1)), rf = (a, b, s = 0.1) => +(a + Math.round(rnd() * (b - a) / s) * s).toFixed(2);
+const RND = { don: () => ({ lb: ri(8, 120), f: pick(['n', 'e100', 'e200']) }), donadx: () => ({ lb: ri(15, 100), adx: ri(15, 35) }), bb: () => ({ k: rf(1.6, 3.2) }), kelt: () => ({ k: rf(1.2, 3.2) }), st: () => ({ p: ri(7, 21), m: rf(1.5, 5, 0.5) }), mom: () => ({ n: ri(30, 250) }) };
+const EXTRA = Array.from({ length: SYN ? 4 : 36 }, () => { const f = pick(FAMS); return [f, RND[f]()] });
+const COMBOS = FAMS.flatMap(f => GRID[f].map(e => [f, e])).concat(EXTRA);
 const OUT = { at: new Date().toISOString(), cap: CAP, groups: [], log: [] }, CH = [];
 for (const G of groups) {
   const series = []; let k = 0;
@@ -41,7 +47,7 @@ for (const G of groups) {
   for (const m of M.values()) { m.rs.sort((a, b) => a - b); m.med = m.rs[Math.floor(m.rs.length / 2)] }
   const pass = (tr, reg, rs) => { const m = M.get(tr[5]); if (!m) return true; if (reg == 'breadth' && m.a / m.n < 0.5) return false; if (reg == 'leader' && m.lead === false) return false; if (rs && m.n >= 4 && tr[6] < m.med) return false; return true };
   const R = [];
-  for (const fam of FAMS) for (const e of GRID[fam]) for (const x of EXIT_TRAIL) for (const be of BE) for (const tsb of TS) {
+  for (const [fam, e] of COMBOS) for (const x of EXIT_TRAIL) for (const be of BE) for (const tsb of TS) {
     let T = []; const key = fam + JSON.stringify(e); for (const S of series) { const sig = S.sig[key] ??= ENT[fam](S.K, e); T = T.concat(trades2(S, sig, x, be, tsb)) } T.sort((a, b) => a[0] - b[0]);
     for (const reg of REG) for (const rs of RS) { const F = reg == 'n' && !rs ? T : T.filter(t => pass(t, reg, rs)); R.push({ fam, e, x, be, tsb, reg, rs, T: F, is: port(F, t0, ts), oos: port(F, ts, t1), all: port(F, t0, t1) }) }
   }
@@ -64,7 +70,7 @@ for (const G of groups) {
   // scelta per il portafoglio unito: primo finalista che passa tutte le prove
   const okf = fin.map((r, i) => ({ r, f: finals[i] })).filter(({ f }) => f.vicini.pos == f.vicini.n && f.costiDoppi.cagr > 0 && f.ritardo.cagr > 0 && f.senzaMigliore.cagr > 0);
   if (okf.length) CH.push({ g: G, r: okf[0].r, f: okf[0].f, t0, ts, t1 });
-  OUT.groups.push({ cls: G.cls, tf: G.tf, mercati: series.map(s => s.sym), from: new Date(t0).toISOString().slice(0, 10), split: new Date(ts).toISOString().slice(0, 10), to: new Date(t1).toISOString().slice(0, 10), combos: R.length, effects, finals, scelta: okf.length ? okf[0].f : null });
+  OUT.extra = EXTRA.map(([f, e]) => f + JSON.stringify(e)); OUT.groups.push({ cls: G.cls, tf: G.tf, mercati: series.map(s => s.sym), from: new Date(t0).toISOString().slice(0, 10), split: new Date(ts).toISOString().slice(0, 10), to: new Date(t1).toISOString().slice(0, 10), combos: R.length, effects, finals, scelta: okf.length ? okf[0].f : null });
   console.log(G.cls, G.tf, R.length, 'combinazioni', finals.length, 'finalisti'); for (const r of R) if (!CH.some(c => c.r == r)) r.T = null
 }
 // portafoglio unito (cripto 1d + metalli + indici): rischio massimo che tiene il calo entro il 10% e il 25%
