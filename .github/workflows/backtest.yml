@@ -27,6 +27,8 @@ jobs:
         continue-on-error: true
       - run: node backtest/segnali.mjs
         continue-on-error: true
+      - run: node backtest/macro.mjs
+        continue-on-error: true
       - run: pip install --quiet openpyxl && python3 backtest/excel.py
       - run: |
           git config user.name "sentinella-bot"

@@ -116,4 +116,4 @@ const score = p => p.n >= 40 ? p.cagr / Math.max(-p.dd, 0.05) : -9;
 const rd = (x, k = 4) => x == null || !isFinite(x) ? null : +x.toFixed(k);
 const slim = p => ({ n: p.n, wr: rd(p.wr), avgR: rd(p.avgR), eq: rd(p.eq, 0), cagr: rd(p.cagr), dd: rd(p.dd), yrs: rd(p.yrs, 2), pos: rd(p.pos, 2) });
 if (EXCH) for (const u of U) if (u.cls == 'cripto') { u.cost = 0.002; u.hc = 0 }
-export { U, CAP, RISK, MAXOPEN, YR, W0, histB, histY, synth, prep, ENT, NAMES, GRID, EXIT_TRAIL, cart, port, score, rd, slim, sleep, ema };
+export { trades, sim, U, CAP, RISK, MAXOPEN, YR, W0, histB, histY, synth, prep, ENT, NAMES, GRID, EXIT_TRAIL, cart, port, score, rd, slim, sleep, ema };

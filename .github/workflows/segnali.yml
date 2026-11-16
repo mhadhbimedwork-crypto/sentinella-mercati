@@ -17,9 +17,11 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: node backtest/segnali.mjs
+      - run: node backtest/macro.mjs
+        continue-on-error: true
       - run: |
           git config user.name "sentinella-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add risultati/segnali.json
+          git add risultati/segnali.json risultati/macro.json
           git commit -m "Segnali 4 ore" || echo nulla
           for i in 1 2 3; do git pull --rebase origin main && git push origin main && break; sleep 5; done
