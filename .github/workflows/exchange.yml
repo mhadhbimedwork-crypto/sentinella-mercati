@@ -1,9 +1,6 @@
 name: Test costi exchange
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: ['backtest/**']
 permissions:
   contents: write
 jobs:
