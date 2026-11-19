@@ -21,10 +21,10 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
       - run: |
-          if ! git diff --quiet risultati/diario.json; then pip install -q openpyxl && python backtest/diario_excel.py; fi
+          if [ -n "$(git status --porcelain risultati/diario.json)" ]; then pip install -q openpyxl && python backtest/diario_excel.py; fi
       - run: |
           git config user.name "sentinella-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add risultati/day_segnali.json risultati/diario.json risultati/DIARIO_SEGNALI.xlsx
+          git add -A risultati
           git commit -m "Segnali day trading" || echo nulla
           for i in 1 2 3 4; do git pull --rebase origin main && git push origin main && break; sleep 5; done
