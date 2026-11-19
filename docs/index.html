@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#0e1420">
-<title>Sentinella Mercati</title><meta name="version" content="2026-11-19.3">
+<title>Sentinella Mercati</title><meta name="version" content="2026-11-19.4">
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
 /* Layout: banda di controllo in alto, poi colonna segnali (larga) + colonna agenti/diario; tutto impilato su telefono */
@@ -130,6 +130,41 @@ footer{color:var(--mut);font-size:12px;margin-top:20px;max-width:70ch}
 body{padding-top:52px}
 @media (min-width:1100px){.menu{transform:none}.mbtn,.mov{display:none!important}.mh button{display:none}body{padding-left:calc(276px + env(safe-area-inset-left,0px));padding-top:16px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Pagina Live: schede di mercato in stile piattaforma di trading */
+section.bare{background:none;border:0;padding:0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;margin:0 0 16px}
+.top label input{width:96px}.top{gap:8px 14px}
+.kpi{padding:8px 10px!important}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.kpi small{display:block;font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+.kpi b{font:700 19px var(--mono);display:block;margin-top:2px}
+.kpi.hot{border-color:var(--up);box-shadow:0 0 0 1px var(--up) inset}
+.todo{display:grid;gap:10px;margin:0 0 18px}
+.job{border-radius:14px;border:1px solid var(--line);background:var(--panel);padding:14px;border-left:6px solid var(--mut)}
+.job.up{border-left-color:var(--up)}.job.dn{border-left-color:var(--dn)}.job.acc{border-left-color:var(--acc)}
+.job .hd{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.job .hd .nm{font-size:18px;font-weight:700}
+.job .why{font-size:13px;margin:6px 0 10px;color:var(--fg);opacity:.9}
+.job dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px 12px;margin:0}
+.job dt{font-size:11px;color:var(--mut)}.job dd{margin:0;font:600 15px var(--mono)}
+.bdg{display:inline-block;font:800 12px var(--sans);letter-spacing:.06em;padding:4px 10px;border-radius:8px}
+.bdg.up{background:var(--up);color:#06150f}.bdg.dn{background:var(--dn);color:#1c0707}.bdg.acc{background:var(--acc);color:#14100a}.bdg.mut{border:1px solid var(--line);color:var(--mut)}
+.calm{border:1px dashed var(--line);border-radius:14px;padding:16px;margin:0 0 18px;background:var(--panel)}
+.calm b{font-size:16px}
+.lvtabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}.lvtabs button{border-radius:99px;padding:6px 14px;font-size:13px}.lvtabs button.on{background:var(--fg);color:var(--bg);border-color:var(--fg);font-weight:700}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:8px}@media (max-width:440px){.mc{padding:10px}.mc .px{font-size:16px}.mc .nm{font-size:14px}.mc .nm small{display:block;margin:0}.mc .r1{flex-wrap:wrap}.mc .tx{font-size:11px}}
+.mc{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.mc.up{border-color:var(--up)}.mc.dn{border-color:var(--dn)}.mc.acc{border-color:var(--acc)}
+.mc .r1{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.mc .nm{font-weight:700;font-size:15px}.mc .nm small{color:var(--mut);font-weight:400;margin-left:4px}
+.mc .px{font:700 20px var(--mono)}.mc .ch{font:600 13px var(--mono)}
+.mc svg{width:100%;height:36px;display:block}
+.mc .tx{font-size:12px;color:var(--mut);min-height:32px}
+.tr{font-size:11px;color:var(--mut)}
+.pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--up);margin-right:6px;animation:pl 1.6s infinite}
+@keyframes pl{0%{opacity:1}50%{opacity:.25}100%{opacity:1}}
+section{border-radius:14px}
 </style>
 </head>
 <body>
@@ -137,7 +172,8 @@ body{padding-top:52px}
 <div id="mov" class="mov" hidden></div>
 <aside id="menu" class="menu" aria-label="Menu">
   <div class="mh"><b>Sentinella</b><button id="mclose" aria-label="Chiudi il menu">&times;</button></div>
-  <button data-pg="oggi" class="mi on">Oggi: cosa fare</button>
+  <button data-pg="live" class="mi on">Live: tutti i mercati</button>
+  <button data-pg="oggi" class="mi">Oggi: cosa fare</button>
   <div class="mg">Per tipo d'investimento</div>
   <button data-pg="cripto" class="mi">Cripto</button>
   <button data-pg="etf" class="mi">Azioni e ETF</button>
@@ -162,6 +198,7 @@ body{padding-top:52px}
 <div id="demo" class="banner" style="background:var(--dn);color:#fff" hidden></div>
 <div id="banner" class="banner" hidden></div>
 <div id="tab-trading">
+<section class="bare" data-pg="live"><div class="kpis" id="lvk"></div><h2>Da fare adesso</h2><div id="lvdo"><div class="empty">Carico i mercati…</div></div><h2>Tutti i mercati</h2><div class="lvtabs" id="lvt"></div><div class="mgrid" id="lvg"></div><p class="sm mut" id="lvnote" style="margin:12px 0 0"></p></section>
 <div id="hero" class="hero" data-pg="oggi"><div class="empty">Carico l'indicazione di oggi…</div></div>
 <div class="grid">
   <div class="col">
@@ -466,7 +503,7 @@ function draw(){
 /*INVESTIMENTI*/
 const EA_API='https://jkvvfzpvwbjxtdzsesct.supabase.co/functions/v1/ea';
 const INV_API='https://jkvvfzpvwbjxtdzsesct.supabase.co/functions/v1/inv';
-let IV=null,PR=null,TAB=LS.get('pg','oggi');
+let IV=null,PR=null,TAB=LS.get('pg','live');
 const eur=x=>x==null||!isFinite(x)?'—':x.toLocaleString('it-IT',{style:'currency',currency:'EUR',maximumFractionDigits:Math.abs(x)>=1000?0:2});
 const pc=(x,d=1)=>x==null||!isFinite(x)?'—':(x>=0?'+':'')+(x*100).toFixed(d).replace('.',',')+'%';
 const pu=(x,d=1)=>x==null||!isFinite(x)?'—':(x*100).toFixed(d).replace('.',',')+'%';
@@ -689,7 +726,7 @@ if(p)h=box({h:'Trend in corso: '+esc(m.sym)+' ('+esc(m.mt5)+')',c:'var(--up)'},[
 else if(m.puoiEntrare)h=box({h:'COMPRA ORA: '+esc(m.sym)+' ('+esc(m.mt5)+')',c:'var(--up)'},[['Tipo ordine','BUY a mercato'],['Prezzo','~'+fmt(m.px)],['Stop loss',fmt(m.stopIniziale)],['Trailing stop','segui a '+fmt(tr)+' dal massimo'],['Take profit','nessuno (facoltativo 2R: '+fmt(m.tp2R)+')'],['Quantità',qfmt(q)+lots]],'Rischio: '+sgCap().rk*100+'% di '+sgCap().cap+' = '+(sgCap().cap*sgCap().rk).toFixed(0)+'. Valore posizione ≈ '+(q*m.px).toFixed(0)+'.');
 else{const lvv=m.livelloAcquisto,ok=m.g.regime.attivo;h=box({h:(ok?'In attesa: ':'Non operare: ')+esc(m.sym)+' ('+esc(m.mt5)+')',c:ok?'var(--acc)':'var(--dn)'},lvv?[['Ordine possibile','BUY STOP a '+fmt(lvv)],['Stop loss',fmt(lvv-m.stopDist)],['Trailing stop',fmt(tr)+' dal massimo'],['Take profit','nessuno (facoltativo 2R: '+fmt(lvv+2*m.stopDist)+')'],['Quantità',qfmt(q)+lots],['Distanza dal livello',((lvv/m.px-1)*100>=0?'+':'')+((lvv/m.px-1)*100).toFixed(1)+'%']]:[['Stato','nessun livello fisso: segui il segnale']],ok?'La prova è fatta comprando dopo la chiusura sopra il livello; un BUY STOP scatta prima (anche su una falsa rottura) e non è stato testato. Vuoi seguire la regola testata: aspetta la chiusura e poi BUY a mercato.':'Il mercato di questo gruppo è debole: la strategia non compra, non inserire ordini.')}
 h+='<div class="sm mut">Ordini SELL, SELL LIMIT e SELL STOP (vendita allo scoperto): disattivati, nei test hanno sempre perso. BUY LIMIT: serve solo per entrare su un ritracciamento dopo il segnale, non migliora i risultati provati.</div>';el.innerHTML=h}
-async function loadSegnali(){try{const r=await fetch(RAW+'segnali.json?'+Date.now());const d=await r.json();if(!d.gruppi||!d.gruppi.length)throw new Error('vuoto');SG=d;
+async function loadSegnali(){try{const r=await fetch(RAW+'segnali.json?'+Date.now());const d=await r.json();if(!d.gruppi||!d.gruppi.length)throw new Error('vuoto');SG=d;try{renderLive()}catch(e){}
 $('#sgat').textContent=new Date(d.at).toLocaleString('it-IT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
 const v=sgVis();if(!SGC||!v.some(m=>m.sym==SGC)){const f=v.find(m=>m.puoiEntrare)||v.find(m=>m.posizioneAperta)||v.find(m=>m.sym=='Oro')||v[0];SGC=f&&f.sym}
 $('#sg').innerHTML=d.gruppi.filter(g=>sgVis().some(m=>m.g.id==g.id)).map(g=>g.regime?'<div style="margin:0 0 8px"><b>'+esc(g.nome)+'</b> · <b class="'+(g.regime.attivo?'up':'mut')+'">'+(g.regime.attivo?'mercato favorevole':'mercato debole')+'</b> <span class="sm mut">('+g.regime.sopraEma200+'/'+g.regime.su+' sopra la media a 200)</span><br><span class="sm mut">Strategia'+(g.strategia.stabile?' adottata (in cima a '+g.strategia.stabile+' ottimizzazioni)':g.ottimizzata?' dell’ultima ottimizzazione (ancora non confermata)':' (di riserva)')+': '+esc(g.strategia.testo)+(g.strategia.ultimaOttimizzazione&&g.strategia.ultimaOttimizzazione!=g.strategia.testo?'<br>In prova, ultima ottimizzazione: '+esc(g.strategia.ultimaOttimizzazione):'')+'</span></div>':'<div class="empty">'+esc(g.nome)+': dati non disponibili ora.</div>').join('');
@@ -698,7 +735,7 @@ let DY=null,DS=null,DYC=null;
 const dn2=(x,k=2)=>x==null?'–':(+x).toLocaleString('it-IT',{maximumFractionDigits:k});
 const dpx=x=>x==null?'–':dn2(x,x>=100?2:x>=1?4:6);
 const dpc=x=>x==null?'–':(x*100).toLocaleString('it-IT',{maximumFractionDigits:1})+'%';
-async function loadDay(){try{const[a,b]=await Promise.all([fetch(RAW+'day.json?'+Date.now()).then(r=>r.json()),fetch(RAW+'day_segnali.json?'+Date.now()).then(r=>r.json()).catch(()=>null)]);if(!a.classi)throw new Error('vuoto');DY=a;DS=b;renderDay()}catch(e){$('#dayst').innerHTML='<div class="empty">Dati day trading non disponibili ora ('+esc(e.message)+').</div>'}}
+async function loadDay(){try{const[a,b]=await Promise.all([fetch(RAW+'day.json?'+Date.now()).then(r=>r.json()),fetch(RAW+'day_segnali.json?'+Date.now()).then(r=>r.json()).catch(()=>null)]);if(!a.classi)throw new Error('vuoto');DY=a;DS=b;renderDay();renderLive()}catch(e){$('#dayst').innerHTML='<div class="empty">Dati day trading non disponibili ora ('+esc(e.message)+').</div>'}}
 function renderDay(){const a=DY,tm=x=>new Date(x).toLocaleString('it-IT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});$('#dayat').textContent=tm(a.at);const CL=a.classi||[];
 const all=CL.flatMap(c=>c.agenti||[]),pro=all.filter(x=>x.stato=='promosso').length,pv=all.filter(x=>x.stato=='in prova').length;
 const msg=pro?`<b class="up">${pro} agent${pro>1?'i hanno':'e ha'} superato tutte le prove.</b> I segnali sotto sono utilizzabili con prudenza.`:pv?`<b>Nessun agente ha superato tutte le prove.</b> ${pv} in osservazione: i loro segnali sono solo da guardare e registrare nel diario, non da seguire con soldi veri.`:`<b>Oggi nessun agente di day trading regge alle prove: il sistema resta fermo.</b> È un risultato onesto, non un guasto: i costi mangiano il vantaggio sulle barre brevi.`;
@@ -723,6 +760,42 @@ const hl=(v,col,t,dash)=>{if(!v)return;x.beginPath();x.setLineDash(dash||[4,4]);
 hl(m.pdH,C.mut,'max ieri');hl(m.pdL,C.mut,'min ieri');ln(m.vwap,C.acc,1.5,[5,3]);ln(m.c,C.fg,1.8);
 if(s0){hl(s0.entrata,C.fg,'entrata',[2,3]);hl(s0.stop,C.dn,'stop');hl(s0.tp,C.up,'obiettivo')}
 $('#dayleg').textContent=`${DYC}, ultime ${n} barre da 15 minuti (circa ${Math.round(n/4)} ore). Linea scura = prezzo · tratteggio colorato = VWAP di giornata (prezzo medio pesato per volume) · grigio = massimo e minimo di ieri.`}
+const LV={tab:'Tutti',live:{}},LVSYM=['BTC','ETH','SOL','BNB','XRP','ADA','DOGE','LINK','AVAX','LTC','TRX'];
+function lvCat(n,c){if(c=='cripto')return 'Cripto';if(c=='forex')return 'Forex';if(c=='metalli')return 'Oro e metalli';if(c=='indici')return 'Indici';return /Oro|Argento|Platino|Rame|Palladio/.test(n)?'Oro e metalli':'Indici'}
+async function lvLive(){try{const c=new AbortController(),tm=setTimeout(()=>c.abort(),6000);const r=await fetch('https://data-api.binance.vision/api/v3/ticker/24hr?symbols='+encodeURIComponent(JSON.stringify(LVSYM.map(x=>x+'USDT'))),{signal:c.signal});clearTimeout(tm);if(!r.ok)return;for(const x of await r.json())LV.live[x.symbol.replace('USDT','')]={px:+x.lastPrice,ch:+x.priceChangePercent/100,t:Date.now()};renderLive()}catch(e){}}
+function lvCards(){const M=new Map();
+for(const m of sgAll()){const sp=m.serie?m.serie.c.slice(-40):[],b=m.g.id=='cripto'?6:1,ch=sp.length>b?sp[sp.length-1]/sp[sp.length-1-b]-1:null;M.set(m.sym,{name:m.sym,mt5:m.mt5,cat:lvCat(m.sym,m.g.id),px:m.px,ch,spark:sp,up:m.sopraEma200,sw:m,g:m.g,day:[]})}
+for(const s of (DS&&DS.snap)||[]){let k=M.get(s.sym);if(!k){k={name:s.sym,mt5:s.mt5,cat:lvCat(s.sym,s.cls),day:[]};M.set(s.sym,k)}k.px=s.px;k.ch=s.ch24;k.spark=s.spark;k.up=s.sopraEma200;k.snap=s}
+for(const a of (DS&&DS.agenti)||[])for(const x of a.segnali||[]){const k=M.get(x.sym);if(k)k.day.push({...x,ag:a})}
+for(const k of M.values()){const L=LV.live[k.name];if(L){k.px=L.px;k.ch=L.ch;k.live=1}k.rec=lvRec(k)}
+return [...M.values()]}
+function lvRec(k){const sw=k.sw,p=sw&&sw.posizioneAperta,ds=k.day.find(d=>d.ag.adottabile),dobs=k.day.find(d=>!d.ag.adottabile);
+if(ds)return{t:ds.dir=='compra'?'COMPRA':'VENDI',c:ds.dir=='compra'?'up':'dn',o:0,tag:'Day trading',txt:'Segnale day trading di un agente promosso e stabile. Chiudi entro le 23:45 UTC.',d:ds};
+if(sw&&sw.puoiEntrare)return{t:'COMPRA',c:'up',o:0,tag:'Swing',txt:'Il prezzo ha rotto il livello e il mercato è favorevole: ingresso con stop mobile.'};
+if(p)return{t:'APERTA',c:'acc',o:1,tag:'Swing',txt:'Operazione in corso: tieni, lo stop sale da solo. Stop attuale '+dpx(p.stop)+', risultato '+dn2(p.R)+' R.'};
+if(dobs)return{t:'OSSERVA',c:'mut',o:2,txt:'Segnale day trading in prova ('+esc(dobs.ag.nome)+'): solo da guardare, non da seguire con soldi veri.'};
+if(sw){if(sw.segnaleNuovo&&!sw.puoiEntrare)return{t:'ATTENDI',c:'mut',o:3,txt:'Segnale bloccato: '+esc(sw.motivoNo||'filtro non superato')+'.'};
+if(k.g.regime&&!k.g.regime.attivo)return{t:'ATTENDI',c:'mut',o:3,txt:'Mercato debole: il sistema resta fuori.'};
+if(sw.livelloAcquisto){const d=sw.livelloAcquisto/k.px-1;return{t:'ATTENDI',c:'mut',o:3,dist:d,txt:'Compra solo sopra '+dpx(sw.livelloAcquisto)+' (a '+dpc(d)+' dal prezzo).'}}}
+return{t:'ATTENDI',c:'mut',o:4,txt:'Nessun segnale. '+(k.up?'Trend sopra la media a 200.':'Trend sotto la media a 200.')}}
+function lvSpark(a,up){if(!a||a.length<3)return'';const lo=Math.min(...a),hi=Math.max(...a),W=200,H=36,pt=a.map((v,i)=>(i/(a.length-1)*W).toFixed(1)+','+(H-2-(H-4)*(v-lo)/((hi-lo)||1)).toFixed(1)).join(' ');return`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pt}" fill="none" stroke="${up?'var(--up)':'var(--dn)'}" stroke-width="1.8" vector-effect="non-scaling-stroke"/></svg>`}
+function renderLive(){if(!$('#lvg'))return;const K=lvCards();if(!K.length){return}const cap=+($('#cap').value)||1000,rk=(+($('#risk').value)||1)/100;
+const todo=K.filter(k=>k.rec.o<=1).sort((a,b)=>a.rec.o-b.rec.o),nowT=Date.now();
+const stS=SG?nowT-new Date(SG.at):null,stD=DS?nowT-new Date(DS.at):null,fresh=x=>x==null?'–':new Date(x).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+const favg=SG&&SG.gruppi?SG.gruppi.filter(g=>g.regime&&g.regime.attivo).length:0,ng=SG&&SG.gruppi?SG.gruppi.filter(g=>g.regime).length:0;
+$('#lvk').innerHTML=`<div class="kpi ${todo.filter(k=>k.rec.o==0).length?'hot':''}"><small>Da fare ora</small><b class="${todo.filter(k=>k.rec.o==0).length?'up':''}">${todo.filter(k=>k.rec.o==0).length}</b></div><div class="kpi"><small>Operazioni aperte</small><b>${todo.filter(k=>k.rec.o==1).length}</b></div><div class="kpi"><small>Mercati seguiti</small><b>${K.length}</b></div><div class="kpi"><small>Mercati favorevoli</small><b>${favg}/${ng}</b></div><div class="kpi"><small><span class="pulse"></span>Prezzi live</small><b style="font-size:16px">${LV.live.BTC?fresh(LV.live.BTC.t):'…'}</b></div>`;
+if(!todo.length){const near=K.filter(k=>k.rec.dist!=null&&k.rec.dist>0).sort((a,b)=>a.rec.dist-b.rec.dist).slice(0,3);$('#lvdo').innerHTML=`<div class="calm"><b>Nessuna operazione consigliata ora.</b><div class="sm mut" style="margin-top:4px">Il sistema controlla ${K.length} mercati e compra solo quando prezzo, trend e regole sono tutti favorevoli. Restare fermi è una scelta: protegge il capitale.</div>${near.length?'<div class="sm" style="margin-top:8px"><b>Più vicini a un segnale:</b> '+near.map(k=>esc(k.name)+' (a '+dpc(k.rec.dist)+')').join(' · ')+'</div>':''}</div>`}
+else{const card=k=>{const r=k.rec,sw=k.sw,p=sw&&sw.posizioneAperta,d=r.d;let E,St,Tp,Q,lt='',stl='Stop (uscita se sbaglia)',cells;
+if(d){E=d.entrata;St=d.stop;Tp=d.tp;Q=cap*rk/d.stopDist}else if(p){E=p.entrata;St=p.stop;Tp=p.R<2?p.tp2R:null;if(St>E)stl='Stop mobile (profitto già bloccato)'}else{E=k.px;St=sw.stopIniziale;Tp=sw.tp2R;Q=cap*rk/sw.stopDist}
+if(sw&&sw.contratto&&Q)lt=' ('+dn2(Q/sw.contratto,2)+' lotti)';
+const last=p?`<div><dt>Risultato ora</dt><dd class="${p.R>=0?'up':'dn'}">${p.R>0?'+':''}${dn2(p.R)} R</dd></div>`:`<div><dt>Quantità (rischio ${dpc(rk)})</dt><dd>${dn2(Q,4)}${lt}</dd></div>`;
+return`<div class="job ${r.c}"><div class="hd"><span class="bdg ${r.c}">${r.t}</span><span class="nm">${esc(k.name)}</span><span class="tr">${esc(k.mt5||'')} · ${r.tag||''}</span><span class="px" style="margin-left:auto;font:700 18px var(--mono)">${dpx(k.px)}</span></div><div class="why">${r.txt}</div><dl><div><dt>Entrata</dt><dd>${dpx(E)}</dd></div><div><dt>${stl}</dt><dd class="${St>E&&p?'up':'dn'}">${dpx(St)}</dd></div><div><dt>Obiettivo</dt><dd class="up">${Tp?dpx(Tp):p?'lascia correre':'fine giornata'}</dd></div>${last}</dl></div>`};
+const nw=todo.filter(k=>k.rec.o==0),op=todo.filter(k=>k.rec.o==1);
+$('#lvdo').innerHTML=(nw.length?'<div class="todo">'+nw.map(card).join('')+'</div>':'<div class="calm"><b>Nessun nuovo ingresso consigliato ora.</b><div class="sm mut" style="margin-top:4px">Il sistema compra solo quando prezzo, trend e regole sono tutti favorevoli.</div></div>')+(op.length?'<h2 style="margin-top:6px">Operazioni già aperte</h2><div class="todo">'+op.map(card).join('')+'</div>':'')}
+const cats=['Tutti','Cripto','Oro e metalli','Indici','Forex'];$('#lvt').innerHTML=cats.map(c=>`<button class="${c==LV.tab?'on':''}" data-t="${c}">${c}</button>`).join('');$('#lvt').querySelectorAll('button').forEach(b=>b.onclick=()=>{LV.tab=b.dataset.t;renderLive()});
+const sh=K.filter(k=>LV.tab=='Tutti'||k.cat==LV.tab).sort((a,b)=>a.rec.o-b.rec.o||a.cat.localeCompare(b.cat)||a.name.localeCompare(b.name));
+$('#lvg').innerHTML=sh.map(k=>{const r=k.rec,up=(k.ch??0)>=0;return`<div class="mc ${r.o<=1?r.c:''}"><div class="r1"><span class="nm">${esc(k.name)}<small>${esc(k.mt5||'')}</small></span><span class="bdg ${r.c}">${r.t}</span></div><div class="r1"><span class="px">${dpx(k.px)}</span><span class="ch ${up?'up':'dn'}">${k.ch==null?'':(up?'▲ ':'▼ ')+dpc(Math.abs(k.ch))}</span></div>${lvSpark(k.spark,up)}<div class="tx">${r.txt}</div><div class="tr">${k.cat} · trend ${k.up?'sopra':'sotto'} la media a 200${k.live?' · <span class="pulse"></span>live':''}</div></div>`}).join('')||'<div class="empty">Nessun mercato in questa categoria.</div>';
+$('#lvnote').textContent=`Segnali swing aggiornati alle ${fresh(SG&&SG.at)}, day trading alle ${fresh(DS&&DS.at)}. Le variazioni sono sulle ultime 24 ore (cripto) o sull'ultima barra giornaliera. Non sono ordini: l'app indica cosa farebbe il sistema.`+(stS&&stS>9*36e5?' ⚠ I segnali swing sembrano non aggiornati.':'')+(stD&&stD>6e5*6?' ⚠ I segnali day trading sembrano non aggiornati.':'')}
 async function loadMacro(){try{const r=await fetch(RAW+'macro.json?'+Date.now());const d=await r.json();if(!d.voci||!d.voci.length)throw new Error('vuoto');$('#mcat').textContent=new Date(d.at).toLocaleString('it-IT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
 const pc=x=>x==null?'\u2013':(x>=0?'+':'')+(x*100).toFixed(1)+'%';
 $('#mc').innerHTML='<p style="margin:0 0 8px"><b class="'+(d.punti>=4?'up':d.punti<=2?'dn':'')+'">'+d.punti+' fattori su '+d.su+' favorevoli al rischio</b> <span class="sm mut">(pi\u00f9 sono, pi\u00f9 il vento \u00e8 a favore di cripto e azioni)</span></p>'+d.fattori.map(f=>'<div class="sm"><b class="'+(f.ok?'up':'dn')+'">'+(f.ok?'\u2713':'\u2717')+'</b> '+esc(f.t)+'</div>').join('')+'<div class="tw" style="margin-top:8px"><table><thead><tr><th>Mercato</th><th>Ultimo</th><th>1 mese</th><th>3 mesi</th><th>Media 200</th></tr></thead><tbody>'+d.voci.map(v=>(()=>{const nc=['vix','dxy','tnx'].includes(v.id);return '<tr><td>'+esc(v.nome)+'</td><td class="num">'+fmt(v.ultimo)+'</td><td class="num '+(nc?'':v.v1m>=0?'up':'dn')+'">'+pc(v.v1m)+'</td><td class="num '+(nc?'':v.v3m>=0?'up':'dn')+'">'+pc(v.v3m)+'</td><td>'+(v.sopra200?'sopra':'sotto')+'</td></tr>'})()).join('')+'</tbody></table></div><p class="sm mut" style="margin:8px 0 0">Legame di Bitcoin negli ultimi 90 giorni (1 = si muove uguale, \u22121 = opposto): '+Object.entries(d.corr90).map(([k,v])=>esc(k)+' '+(v==null?'\u2013':String(v).replace('.',','))).join(' \u00b7 ')+'.</p>'}catch(e){$('#mc').innerHTML='<div class="empty">Quadro macro non disponibile ora.</div>'}}
@@ -764,9 +837,10 @@ function renderAcct(){const sec=$('#acsec');if(!AC){sec.hidden=true;return}sec.h
 function renderInv(){renderSat();renderGoal();renderAdv();renderEtf();renderStocks();renderAvoid();renderLt();renderBrokers();renderMa();if(!$('#p_hold').children.length||!$('#p_hold').querySelector('input'))renderHold((PR&&PR.hold)||{});renderCalcOpts();renderPlan()}
 async function loadInv(){try{const c=new AbortController(),tm=setTimeout(()=>c.abort(),15000);const r=await fetch(INV_API,{signal:c.signal,cache:'no-store'});clearTimeout(tm);if(!r.ok)throw new Error('server '+r.status);IV=await r.json();renderInv()}catch(e){$('#stocks').innerHTML='<div class="empty">Dati investimenti non raggiungibili ('+esc(e.message)+'). Riprovo tra poco.</div>'}}
 const INVP=['luna','etf','piano'];
-function showPage(pg){if(!['oggi','cripto','indici','segnali','notizie','prove','conto','luna','etf','piano','day'].includes(pg))pg='oggi';TAB=pg;LS.set('pg',pg);
+function showPage(pg){if(!['live','oggi','cripto','indici','segnali','notizie','prove','conto','luna','etf','piano','day'].includes(pg))pg='live';TAB=pg;LS.set('pg',pg);
 document.querySelectorAll('section[data-pg],#hero').forEach(s=>s.classList.toggle('pgoff',!(' '+s.dataset.pg+' ').includes(' '+pg+' ')));
-document.querySelectorAll('.tr-only').forEach(x=>x.hidden=!['oggi','cripto','indici','segnali'].includes(pg));
+document.querySelectorAll('.tr-only').forEach(x=>x.hidden=!['live','oggi','cripto','indici','segnali','day'].includes(pg));
+{const bs=$('#bsound');if(bs)bs.hidden=pg=='live'}
 document.querySelectorAll('.menu .mi').forEach(b=>b.classList.toggle('on',b.dataset.pg==pg));closeMenu();
 if(INVP.includes(pg))calc();else{if(pg=='day')drawDay();draw();if(SG){chips();if(!sel()){const v=sgVis();SGC=v[0]&&v[0].sym}chips();drawSg();planSg()}}window.scrollTo(0,0)}
 function openMenu(){$('#menu').classList.add('open');$('#mov').hidden=false;$('#mbtn').setAttribute('aria-expanded','true')}
@@ -787,7 +861,7 @@ $('#bsound').onclick=()=>{snd=!snd;if(snd){try{actx=actx||new (window.AudioConte
 for(const id of ['cap','risk']){const el=$('#'+id),sv=LS.get(id,null);if(sv!=null)el.value=sv;el.onchange=()=>{LS.set(id,el.value);render()}}
 window.addEventListener('resize',()=>{if(INVP.includes(TAB))calc();else{draw();drawSg();drawDay()}});
 setInterval(()=>{next--;if(next<=0){next=60;scan()}$('#cd').textContent=Math.max(0,next)},1000);
-setInterval(livePx,15000);loadAcct();setInterval(loadAcct,30000);loadNews();setInterval(loadNews,3e5);loadAuto();loadAgenti();loadSegnali();setInterval(loadSegnali,6e5);loadMacro();setInterval(loadMacro,6e5);loadDay();setInterval(loadDay,3e5);loadDiario();setInterval(loadDiario,3e5);loadLuna();['l_cap','l_pct','l_n'].forEach(i=>$('#'+i).addEventListener('input',lunaCalc));
+setInterval(livePx,15000);loadAcct();setInterval(loadAcct,30000);loadNews();setInterval(loadNews,3e5);loadAuto();loadAgenti();loadSegnali();setInterval(loadSegnali,6e5);loadMacro();setInterval(loadMacro,6e5);loadDay();setInterval(loadDay,3e5);lvLive();setInterval(lvLive,15000);setInterval(renderLive,20000);loadDiario();setInterval(loadDiario,3e5);loadLuna();['l_cap','l_pct','l_n'].forEach(i=>$('#'+i).addEventListener('input',lunaCalc));
 render();scan();showPage(TAB);loadInv().then(()=>{if(LS.get('pin','')&&!PR)loadPlan()});setInterval(loadInv,6e5);
 </script>
 </body>
