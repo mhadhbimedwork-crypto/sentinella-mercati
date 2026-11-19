@@ -11,15 +11,20 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: node backtest/day_segnali.mjs
+      - run: node backtest/diario.mjs
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: |
+          if ! git diff --quiet risultati/diario.json; then pip install -q openpyxl && python backtest/diario_excel.py; fi
       - run: |
           git config user.name "sentinella-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add risultati/day_segnali.json
+          git add risultati/day_segnali.json risultati/diario.json risultati/DIARIO_SEGNALI.xlsx
           git commit -m "Segnali day trading" || echo nulla
           for i in 1 2 3 4; do git pull --rebase origin main && git push origin main && break; sleep 5; done
