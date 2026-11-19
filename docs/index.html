@@ -165,6 +165,17 @@ section.bare{background:none;border:0;padding:0}
 .pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--up);margin-right:6px;animation:pl 1.6s infinite}
 @keyframes pl{0%{opacity:1}50%{opacity:.25}100%{opacity:1}}
 section{border-radius:14px}
+
+.lb{position:relative;height:104px;margin:6px 8px 10px}
+.lb .ln{position:absolute;left:0;right:0;top:36px;height:6px;border-radius:3px;background:var(--line)}
+.lb .zl{position:absolute;top:36px;height:6px;opacity:.55}.lb .zl.dn{background:var(--dn)}.lb .zl.up{background:var(--up)}
+.lb .mk{position:absolute;top:29px;width:2px;height:20px;transform:translateX(-1px);background:var(--mut)}
+.lb .mk.up{background:var(--up)}.lb .mk.dn{background:var(--dn)}.lb .mk.acc{background:var(--acc)}
+.lb .lbl{position:absolute;font:600 10px/1.2 var(--mono);transform:translateX(-50%);white-space:nowrap;text-align:center;color:var(--fg)}
+.lb .lbl i{display:block;font-style:normal;font-weight:400;color:var(--mut)}
+.lb .lbl.t{top:0}.lb .lbl.b{top:56px}
+.lb .lbl.up b{color:var(--up)}.lb .lbl.dn b{color:var(--dn)}.lb .lbl.acc b{color:var(--acc)}
+.lb .pxm{position:absolute;top:26px;width:12px;height:26px;border-radius:4px;background:var(--fg);transform:translateX(-6px);box-shadow:0 0 0 2px var(--panel)}
 </style>
 </head>
 <body>
@@ -779,6 +790,17 @@ if(sw){if(sw.segnaleNuovo&&!sw.puoiEntrare)return{t:'ATTENDI ●',c:'mut',o:3,tx
 if(k.g.regime&&!k.g.regime.attivo)return{t:'ATTENDI ●',c:'mut',o:3,txt:'Mercato debole: il sistema non compra.'};
 if(sw.livelloAcquisto){const d=sw.livelloAcquisto/k.px-1;return{t:'ATTENDI ●',c:'mut',o:3,dist:d,txt:'Compra solo sopra '+dpx(sw.livelloAcquisto)+' (a '+dpc(d)+' dal prezzo attuale).'}}}
 return{t:'ATTENDI ●',c:'mut',o:4,txt:'Nessun segnale ora. '+(k.up?'Trend sopra la media a 200.':'Trend sotto la media a 200.')}}
+function lvBar(L,px){const v=L.map(x=>x.v).concat([px]).filter(x=>x>0),lo0=Math.min(...v),hi0=Math.max(...v),pd=(hi0-lo0)*.08||px*.01,lo=lo0-pd,hi=hi0+pd,X=a=>Math.max(2,Math.min(98,(a-lo)/(hi-lo)*100));
+const en=L.find(x=>x.k=='e'),st=L.find(x=>x.k=='s'),tps=L.filter(x=>x.k=='t1'||x.k=='t2'),far=tps.length?tps.reduce((a,b)=>Math.abs(b.v-en.v)>Math.abs(a.v-en.v)?b:a):null;
+let h='<div class="lb" role="img" aria-label="Barra del prezzo con stop, entrata e obiettivi"><div class="ln"></div>';
+if(en&&st)h+=`<div class="zl dn" style="left:${Math.min(X(st.v),X(en.v))}%;width:${Math.abs(X(en.v)-X(st.v))}%"></div>`;
+if(en&&far)h+=`<div class="zl up" style="left:${Math.min(X(far.v),X(en.v))}%;width:${Math.abs(X(far.v)-X(en.v))}%"></div>`;
+const S=[...L].sort((a,b)=>a.v-b.v);S.forEach((m,i)=>{const dp=(m.v/px-1),x=X(m.v);h+=`<div class="mk ${m.c}" style="left:${x}%"></div><div class="lbl ${m.c} ${i%2?'t':'b'}" style="left:clamp(34px,${x}%,calc(100% - 34px))"><b>${m.n}</b><i>${dpx(m.v)}</i><i>${dp>=0?'+':''}${dpc(dp)}</i></div>`});
+h+=`<div class="pxm" style="left:${X(px)}%" title="Prezzo attuale"></div></div><div class="sm mut" style="margin:-2px 0 6px;text-align:center">▮ = prezzo attuale · le percentuali sono la distanza dal prezzo di adesso</div>`;return h}
+function lvLevels(k){const r=k.rec,sw=k.sw,p=sw&&sw.posizioneAperta,d=r.d,L=[];
+if(d){const sg=d.dir=='compra'?1:-1,x=d.ag.uscita||{};L.push({k:'s',v:d.stop,n:'Stop',c:'dn'},{k:'e',v:d.entrata,n:'Entrata',c:'acc'});if(d.tp)L.push({k:'t1',v:d.tp,n:'Take profit',c:'up'});if(x.be)L.push({k:'b',v:d.entrata+sg*d.stopDist,n:'Stop a pareggio da qui',c:'acc'});return L}
+if(p){L.push({k:'s',v:p.stop,n:'Stop mobile ora',c:p.stop>=p.entrata?'up':'dn'},{k:'e',v:p.entrata,n:'Ingresso teorico',c:'acc'});const si=p.entrata-sw.stopDist;if(si>0&&si<p.stop&&p.stop>p.entrata)L.push({k:'i',v:si,n:'Stop iniziale',c:'dn'});if(p.R<2)L.push({k:'t1',v:p.tp2R,n:'TP1 +2R',c:'up'});if(p.R<3)L.push({k:'t2',v:p.tp3R,n:'TP2 +3R',c:'up'});return L}
+if(sw){const E=k.px;L.push({k:'s',v:sw.stopIniziale,n:'Stop / trailing',c:'dn'},{k:'e',v:E,n:'Entrata',c:'acc'},{k:'t1',v:sw.tp2R,n:'TP1 +2R',c:'up'},{k:'t2',v:sw.tp3R,n:'TP2 +3R',c:'up'})}return L}
 function lvSpark(a,up){if(!a||a.length<3)return'';const lo=Math.min(...a),hi=Math.max(...a),W=200,H=36,pt=a.map((v,i)=>(i/(a.length-1)*W).toFixed(1)+','+(H-2-(H-4)*(v-lo)/((hi-lo)||1)).toFixed(1)).join(' ');return`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pt}" fill="none" stroke="${up?'var(--up)':'var(--dn)'}" stroke-width="1.8" vector-effect="non-scaling-stroke"/></svg>`}
 function renderLive(){if(!$('#lvg'))return;const K=lvCards();if(!K.length){return}const cap=+($('#cap').value)||1000,rk=(+($('#risk').value)||1)/100;
 const todo=K.filter(k=>k.rec.o<=1).sort((a,b)=>a.rec.o-b.rec.o),nowT=Date.now();
@@ -790,7 +812,7 @@ else{const card=k=>{const r=k.rec,sw=k.sw,p=sw&&sw.posizioneAperta,d=r.d;let E,S
 if(d){E=d.entrata;St=d.stop;Tp=d.tp;Q=cap*rk/d.stopDist}else if(p){E=p.entrata;St=p.stop;Tp=p.R<2?p.tp2R:null;if(St>E)stl='Stop mobile (profitto già bloccato)'}else{E=k.px;St=sw.stopIniziale;Tp=sw.tp2R;Q=cap*rk/sw.stopDist}
 if(sw&&sw.contratto&&Q)lt=' ('+dn2(Q/sw.contratto,2)+' lotti)';
 const last=p?`<div><dt>Da allora</dt><dd class="${k.px>=E?'up':'dn'}">${k.px>=E?'+':''}${dpc(k.px/E-1)}</dd></div>`:`<div><dt>Quantità (rischio ${dpc(rk)})</dt><dd>${dn2(Q,4)}${lt}</dd></div>`;
-return`<div class="job ${r.c}"><div class="hd"><span class="bdg ${r.c}">${r.t}</span><span class="nm">${esc(k.name)}</span><span class="tr">${esc(k.mt5||'')} · ${r.tag||''}</span><span style="margin-left:auto;text-align:right"><span class="px" style="font:700 18px var(--mono)">${dpx(k.px)}</span><div class="tr">prezzo attuale${k.pxT?" · "+new Date(k.pxT).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}):""}</div></span></div><div class="why">${r.txt}</div><dl><div><dt>${p?'Ingresso teorico del '+lvD(p.dal):'Entrata ora'}</dt><dd>${dpx(p?E:k.px)}</dd></div><div><dt>${stl}</dt><dd class="${St>E&&p?'up':'dn'}">${dpx(St)}</dd></div><div><dt>Obiettivo</dt><dd class="up">${Tp?dpx(Tp):p?'nessuno, stop mobile':'fine giornata'}</dd></div>${last}</dl></div>`};
+return`<div class="job ${r.c}"><div class="hd"><span class="bdg ${r.c}">${r.t}</span><span class="nm">${esc(k.name)}</span><span class="tr">${esc(k.mt5||'')} · ${r.tag||''}</span><span style="margin-left:auto;text-align:right"><span class="px" style="font:700 18px var(--mono)">${dpx(k.px)}</span><div class="tr">prezzo attuale${k.pxT?" · "+new Date(k.pxT).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}):""}</div></span></div><div class="why">${r.txt}</div>${lvBar(lvLevels(k),k.px)}${sw&&!d&&sw.trailDist?'<div class="sm mut" style="margin:0 0 8px"><b>Trailing stop:</b> tieni lo stop a '+dpx(sw.trailDist)+' sotto il massimo raggiunto; sale da solo, mai giù. <b>TP1/TP2</b> sono livelli indicativi (+2R e +3R, non testati): l\'uscita provata è il trailing.</div>':d&&d.tp?'<div class="sm mut" style="margin:0 0 8px">Uscita provata: stop, take profit'+(d.ag.uscita&&d.ag.uscita.be?', stop a pareggio dopo +1R':'')+' o chiusura a fine giornata (23:45 UTC), quello che arriva prima.</div>':''}<dl><div><dt>${p?'Ingresso teorico del '+lvD(p.dal):'Entrata ora'}</dt><dd>${dpx(p?E:k.px)}</dd></div><div><dt>${stl}</dt><dd class="${St>E&&p?'up':'dn'}">${dpx(St)}</dd></div><div><dt>Obiettivo</dt><dd class="up">${Tp?dpx(Tp):p?'nessuno, stop mobile':'fine giornata'}</dd></div>${last}</dl></div>`};
 const nw=todo.filter(k=>k.rec.o==0),op=todo.filter(k=>k.rec.o==1);
 $('#lvdo').innerHTML=(nw.length?'<div class="todo">'+nw.map(card).join('')+'</div>':'<div class="calm"><b>Nessun nuovo ingresso consigliato ora.</b><div class="sm mut" style="margin-top:4px">Il sistema compra solo quando prezzo, trend e regole sono tutti favorevoli.</div></div>')+(op.length?'<h2 style="margin-top:6px">Trend già in corso (non sono nuovi ingressi)</h2><p class="sm mut" style="margin:0 0 8px">Mercati in cui la strategia sarebbe già entrata nei giorni o mesi scorsi. Servono solo a chi è già dentro; se non lo sei, non entrare adesso.</p><div class="todo">'+op.map(card).join('')+'</div>':'')}
 const cats=['Tutti','Cripto','Oro e metalli','Indici','Forex'];$('#lvt').innerHTML=cats.map(c=>`<button class="${c==LV.tab?'on':''}" data-t="${c}">${c}</button>`).join('');$('#lvt').querySelectorAll('button').forEach(b=>b.onclick=()=>{LV.tab=b.dataset.t;renderLive()});
