@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#0e1420">
-<title>Sentinella Mercati</title><meta name="version" content="2026-11-16.2">
+<title>Sentinella Mercati</title><meta name="version" content="2026-11-19.1">
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
 /* Layout: banda di controllo in alto, poi colonna segnali (larga) + colonna agenti/diario; tutto impilato su telefono */
@@ -686,7 +686,7 @@ h+='<div class="sm mut">Ordini SELL, SELL LIMIT e SELL STOP (vendita allo scoper
 async function loadSegnali(){try{const r=await fetch(RAW+'segnali.json?'+Date.now());const d=await r.json();if(!d.gruppi||!d.gruppi.length)throw new Error('vuoto');SG=d;
 $('#sgat').textContent=new Date(d.at).toLocaleString('it-IT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
 const v=sgVis();if(!SGC||!v.some(m=>m.sym==SGC)){const f=v.find(m=>m.puoiEntrare)||v.find(m=>m.posizioneAperta)||v.find(m=>m.sym=='Oro')||v[0];SGC=f&&f.sym}
-$('#sg').innerHTML=d.gruppi.filter(g=>sgVis().some(m=>m.g.id==g.id)).map(g=>g.regime?'<div style="margin:0 0 8px"><b>'+esc(g.nome)+'</b> · <b class="'+(g.regime.attivo?'up':'mut')+'">'+(g.regime.attivo?'mercato favorevole':'mercato debole')+'</b> <span class="sm mut">('+g.regime.sopraEma200+'/'+g.regime.su+' sopra la media a 200)</span><br><span class="sm mut">Strategia'+(g.ottimizzata?' scelta dall’ottimizzazione':' (di riserva)')+': '+esc(g.strategia.testo)+'</span></div>':'<div class="empty">'+esc(g.nome)+': dati non disponibili ora.</div>').join('');
+$('#sg').innerHTML=d.gruppi.filter(g=>sgVis().some(m=>m.g.id==g.id)).map(g=>g.regime?'<div style="margin:0 0 8px"><b>'+esc(g.nome)+'</b> · <b class="'+(g.regime.attivo?'up':'mut')+'">'+(g.regime.attivo?'mercato favorevole':'mercato debole')+'</b> <span class="sm mut">('+g.regime.sopraEma200+'/'+g.regime.su+' sopra la media a 200)</span><br><span class="sm mut">Strategia'+(g.strategia.stabile?' adottata (in cima a '+g.strategia.stabile+' ottimizzazioni)':g.ottimizzata?' dell’ultima ottimizzazione (ancora non confermata)':' (di riserva)')+': '+esc(g.strategia.testo)+(g.strategia.ultimaOttimizzazione&&g.strategia.ultimaOttimizzazione!=g.strategia.testo?'<br>In prova, ultima ottimizzazione: '+esc(g.strategia.ultimaOttimizzazione):'')+'</span></div>':'<div class="empty">'+esc(g.nome)+': dati non disponibili ora.</div>').join('');
 chips();drawSg();planSg();hero(d)}catch(e){$('#sg').innerHTML='<div class="empty">Dati non disponibili ora ('+esc(e.message)+').</div>';$('#hero').innerHTML='<div class="empty">Indicazione non disponibile ora.</div>'}}
 async function loadMacro(){try{const r=await fetch(RAW+'macro.json?'+Date.now());const d=await r.json();if(!d.voci||!d.voci.length)throw new Error('vuoto');$('#mcat').textContent=new Date(d.at).toLocaleString('it-IT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
 const pc=x=>x==null?'\u2013':(x>=0?'+':'')+(x*100).toFixed(1)+'%';
