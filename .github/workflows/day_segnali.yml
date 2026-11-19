@@ -1,0 +1,25 @@
+name: Segnali day trading
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '3,18,33,48 * * * *'
+permissions:
+  contents: write
+concurrency:
+  group: day-segnali
+  cancel-in-progress: true
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node backtest/day_segnali.mjs
+      - run: |
+          git config user.name "sentinella-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add risultati/day_segnali.json
+          git commit -m "Segnali day trading" || echo nulla
+          for i in 1 2 3 4; do git pull --rebase origin main && git push origin main && break; sleep 5; done

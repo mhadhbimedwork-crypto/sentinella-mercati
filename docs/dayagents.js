@@ -37,7 +37,7 @@
       sig(K, p) { const s = new Int8Array(K.n), V = K.smaV(20); for (let i = 21; i < K.n; i++) { if (K.v[i] > p.k * V[i - 1] && Math.abs(K.c[i] - K.o[i]) > K.atr[i]) s[i] = K.c[i] > K.o[i] ? 1 : -1 } return s } },
     sweep: { nome: 'Caccia agli stop del giorno prima', grid: [{ w: 0.3 }, { w: 0.6 }, { w: 1 }], desc: p => `il prezzo buca massimo/minimo di ieri e rientra con ombra di almeno ${p.w} ATR: si scommette sul rientro`,
       sig(K, p) { const s = new Int8Array(K.n); for (let i = 1; i < K.n; i++) { if (K.mn[i] < 60 || !(K.pdH[i] > 0)) continue; if (K.h[i] > K.pdH[i] && K.c[i] < K.pdH[i] && K.h[i] - K.c[i] >= p.w * K.atr[i]) s[i] = -1; else if (K.l[i] < K.pdL[i] && K.c[i] > K.pdL[i] && K.c[i] - K.l[i] >= p.w * K.atr[i]) s[i] = 1 } return s } } };
-  const EXITS = []; for (const sd of [1, 1.5, 2]) for (const tp of [0, 1.5, 2, 3]) for (const be of [0, 1]) for (const hrs of [0, 1]) EXITS.push({ sd, tp, be, hrs });
+  const EXITS = []; for (const sd of [1, 1.5, 2, 3]) for (const tp of [0, 1.5, 2, 3]) for (const be of [0, 1]) for (const hrs of [0, 1]) EXITS.push({ sd, tp, be, hrs });
   // Simula le operazioni: ingresso all'apertura della barra dopo il segnale, stop, take profit, pareggio dopo +1R, chiusura a fine giornata.
   // Se stop e take profit cadono nella stessa barra vale lo stop (ipotesi prudente).
   function simulate(K, sig, x, o) {
