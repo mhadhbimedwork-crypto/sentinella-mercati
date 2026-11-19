@@ -6,6 +6,7 @@ import { CLASSI, MSTF, carica } from './daydata.mjs';
 const { prep, AG, simulate } = createRequire(import.meta.url)('../docs/dayagents.js');
 const rj = f => { try { return JSON.parse(fs.readFileSync(f, 'utf8')) } catch (e) { return null } };
 const DS = rj('risultati/day_segnali.json'), SW = rj('risultati/segnali.json'); let Dia = rj('risultati/diario.json') || { ops: [] };
+Dia.ops = Dia.ops.filter(z => !(z.tipo == 'swing' && (z.commenti[0]?.testo || '').startsWith('Operazione già in corso')));
 const before = JSON.stringify(Dia), now = new Date().toISOString(), it = x => new Date(x).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 const fmt = x => x == null ? '–' : (+x).toPrecision(6).replace(/\.?0+$/, '');
 const com = (o, t) => o.commenti.push({ t: now, testo: t });
@@ -22,13 +23,15 @@ for (const A of DS?.agenti || []) for (const s of A.segnali || []) {
   o.rMax = Math.max(o.rMax, s.R); o.rMin = Math.min(o.rMin, s.R); o.Rora = s.R; o.px = s.px;
   for (const th of [1, 2, 3, -0.5, -0.8]) { const f = 't' + th; o.soglie = o.soglie || {}; if (!o.soglie[f] && (th > 0 ? s.R >= th : s.R <= th)) { o.soglie[f] = 1; com(o, th > 0 ? `Raggiunti +${th} R (prezzo ${fmt(s.px)}).` : `Sotto ${th} R: il prezzo (${fmt(s.px)}) si avvicina allo stop ${fmt(s.stop)}.`) } }
 }
-// ---- swing (cripto 4h, metalli e indici giornaliero): segnali nuovi e posizioni aperte
+// ---- swing: si registra solo un segnale NUOVO (o un trend entrato negli ultimi 2 giorni); i trend gia' in corso da mesi non sono operazioni
 for (const G of SW?.gruppi || []) for (const m of G.mercati || []) {
-  const p = m.posizioneAperta; if (!p && !m.puoiEntrare) continue;
-  const dal = p ? p.dal : now.slice(0, 13); const id = ['swing', G.id, m.sym, 'compra', p ? p.dal : 'nuovo-' + now.slice(0, 10)].join('|'); seen.add(id);
-  const nuovo = !Dia.ops.some(z => z.id == id), E = p ? p.entrata : m.px, SD = m.stopDist;
+  const p = m.posizioneAperta, cur = Dia.ops.find(z => z.tipo == 'swing' && z.cls == G.id && z.mercato == m.sym && z.stato == 'aperta');
+  const recente = p && Date.now() - new Date(p.dal) < 2 * 864e5 + 4 * 36e5 * 6;
+  if (!cur && !(m.puoiEntrare && !p) && !recente) continue;
+  const id = cur ? cur.id : ['swing', G.id, m.sym, 'compra', p ? p.dal : now.slice(0, 10)].join('|'); seen.add(id);
+  const nuovo = !cur, E = p ? p.entrata : m.px, SD = m.stopDist;
   const o = mk({ id, tipo: 'swing', cls: G.id, classe: G.nome, mercato: m.sym, mt5: m.mt5, strategia: G.strategia?.nome || '', qualita: G.strategia?.stabile ? 'strategia adottata (' + G.strategia.stabile + ' ottimizzazioni)' : 'strategia di riserva/in prova', tf: G.tf, dir: 'compra', aperta: p ? p.dal : now, entrata: E, stopIniziale: p ? +(E - SD).toPrecision(6) : m.stopIniziale, stop: p ? p.stop : m.stopIniziale, tp: p ? p.tp2R : m.tp2R, stopDist: SD, rischioPct: SW.risk, rischioEuro: +(CAP * SW.risk).toFixed(2), regola: G.strategia?.testo || '', costo: null, R0: p ? p.R : 0 });
-  if (nuovo) com(o, `${p ? 'Operazione già in corso' : 'Segnale individuato'}: compra ${m.sym} a ${fmt(E)} (${G.nome}). Stop ${fmt(o.stop)}, inseguimento ${fmt(m.trailDist)}, obiettivi indicativi +2R ${fmt(m.tp2R)} / +3R ${fmt(m.tp3R)}. ${G.strategia?.testo || ''}`);
+  if (nuovo) com(o, `Segnale individuato: compra ${m.sym} a ${fmt(E)} (${G.nome}). Stop ${fmt(o.stop)}, inseguimento ${fmt(m.trailDist)}, obiettivi indicativi +2R ${fmt(m.tp2R)} / +3R ${fmt(m.tp3R)}. ${G.strategia?.testo || ''}`);
   if (o.stato != 'aperta') continue;
   if (p && Math.abs(p.stop - o.stop) > 1e-9 * Math.abs(o.stop)) { com(o, `Stop mobile alzato da ${fmt(o.stop)} a ${fmt(p.stop)}. Risultato ora ${p.R} R.`); o.stop = p.stop }
   if (p) { o.rMax = Math.max(o.rMax, p.R); o.rMin = Math.min(o.rMin, p.R); o.Rora = p.R; o.px = m.px; for (const th of [1, 2, 3]) { o.soglie = o.soglie || {}; const f = 't' + th; if (!o.soglie[f] && p.R >= th) { o.soglie[f] = 1; com(o, `Raggiunti +${th} R (prezzo ${fmt(m.px)}).`) } } }

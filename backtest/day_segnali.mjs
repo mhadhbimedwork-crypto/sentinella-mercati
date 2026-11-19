@@ -1,7 +1,7 @@
 // Segnali day trading dal vivo su cripto, forex, oro e indici: applica gli agenti scelti da day.json alle barre appena chiuse. Non invia ordini.
 import fs from 'node:fs'; import { createRequire } from 'node:module';
 import { CAP, sleep } from './lib.mjs';
-import { CLASSI, MSTF, carica } from './daydata.mjs';
+import { CLASSI, MSTF, carica, quote } from './daydata.mjs';
 const { prep, AG, simulate } = createRequire(import.meta.url)('../docs/dayagents.js');
 const N = 96;
 let D = null; try { D = JSON.parse(fs.readFileSync('risultati/day.json', 'utf8')) } catch (e) { }
@@ -35,7 +35,7 @@ for (const CD of D.classi) {
 }
 if (!cache['cripto15m']) await dati(CLASSI[0], '15m');
 // istantanea di tutti i mercati (prezzo, variazione 24 ore, andamento, trend) per la pagina Live
-for (const C of CLASSI) { const tf = C.tfs.includes('1h') ? '1h' : C.tfs[0]; const S = await dati(C, '1h'); for (const s of S) { const K = s.K, n = K.n, e = K.ema(200)[n - 1], step = 1, b24 = n - 1 - 24, sp = Array.from(K.c.slice(n - 48), z => +z.toPrecision(6)); out.snap.push({ cls: C.id, sym: s.m.nome, mt5: s.m.mt5, px: K.c[n - 1], ch24: b24 >= 0 ? +(K.c[n - 1] / K.c[b24] - 1).toFixed(4) : null, spark: sp, trend: K.c[n - 1] > e ? 'su' : 'giu', sopraEma200: K.c[n - 1] > e, ultimaBarra: K.t[n - 1] + MSTF['1h'], atr: +K.atr[n - 1].toPrecision(5), pdH: +K.pdH[n - 1].toPrecision(6), pdL: +K.pdL[n - 1].toPrecision(6) }) } }
+for (const C of CLASSI) { const tf = C.tfs.includes('1h') ? '1h' : C.tfs[0]; const S = await dati(C, '1h'); for (const s of S) { const K = s.K, n = K.n, e = K.ema(200)[n - 1], step = 1, b24 = n - 1 - 24, sp = Array.from(K.c.slice(n - 48), z => +z.toPrecision(6)); const q = s.m.src == 'y' ? await quote(s.m.s) : null; out.snap.push({ cls: C.id, live: q ? q.px : null, liveT: q ? q.t : null, sym: s.m.nome, mt5: s.m.mt5, px: K.c[n - 1], ch24: b24 >= 0 ? +(K.c[n - 1] / K.c[b24] - 1).toFixed(4) : null, spark: sp, trend: K.c[n - 1] > e ? 'su' : 'giu', sopraEma200: K.c[n - 1] > e, ultimaBarra: K.t[n - 1] + MSTF['1h'], atr: +K.atr[n - 1].toPrecision(5), pdH: +K.pdH[n - 1].toPrecision(6), pdL: +K.pdL[n - 1].toPrecision(6) }) } }
 for (const C of CLASSI) for (const tf of C.tfs) { const S = cache[C.id + tf]; if (!S) continue; for (const s of S) { const nm = s.m.nome; if (out.mercati[nm] || !(show.has(C.id + '|' + nm) || nm == 'BTC')) continue; const K = s.K, n = K.n, f = n - N; out.mercati[nm] = { cls: C.id, t: K.t.slice(f), c: Array.from(K.c.slice(f)), vwap: Array.from(K.vwap.slice(f), z => +z.toPrecision(6)), pdH: +K.pdH[n - 1].toPrecision(6), pdL: +K.pdL[n - 1].toPrecision(6), px: K.c[n - 1], atr: +K.atr[n - 1].toPrecision(5) } } }
 // il grafico di un mercato con segnale deve esistere anche se la classe ha un solo agente su un altro tf
 save()

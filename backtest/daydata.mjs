@@ -24,3 +24,15 @@ export async function carica(m, tf, n) {
   const ms = MSTF[tf]; let raw = m.src == 'b' ? await histB(m.s, tf, n) : await histYH(m.s);
   raw = raw.filter(r => r[0] + ms <= Date.now()); return raw
 }
+
+// prezzo attuale (ultimo scambio) di un mercato Yahoo, piu' fresco dell'ultima barra chiusa
+export async function quote(sym) {
+  for (const h of ['query1', 'query2']) {
+    try {
+      const r = await fetch('https://' + h + '.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(sym) + '?interval=1d&range=1d', { headers: UA });
+      if (!r.ok) continue; const m = (await r.json()).chart.result[0].meta;
+      if (m.regularMarketPrice > 0) return { px: m.regularMarketPrice, t: (m.regularMarketTime || 0) * 1000 }
+    } catch (e) { }
+  }
+  return null
+}
