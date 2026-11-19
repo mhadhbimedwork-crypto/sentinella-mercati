@@ -10,6 +10,13 @@ const GRUPPI = [
   { id: 'metalli', cls: 'metalli', tf: '1d', ms: 864e5, nome: 'Metalli, giornaliero', def: { fam: 'don', par: { lb: 30, f: 'n' }, sd: 1.5, td: 8, be: 2, ts: 0, reg: 'breadth', rs: 1 } },
   { id: 'indici', cls: 'indici', tf: '1d', ms: 864e5, nome: 'Indici azionari, giornaliero', def: { fam: 'don', par: { lb: 10, f: 'e100' }, sd: 1.5, td: 12, be: 0, ts: 0, reg: 'n', rs: 0 } }];
 let B = null; try { B = JSON.parse(fs.readFileSync('risultati/backtest2.json', 'utf8')) } catch (e) { }
+// Stabilità: si adotta solo la strategia rimasta in cima ad almeno 3 delle ultime 8 ottimizzazioni (evita di cambiare ogni giorno per un risultato di fortuna).
+let ST = []; try { ST = JSON.parse(fs.readFileSync('risultati/storico.json', 'utf8')).slice(-8) } catch (e) { }
+function stabile(nomeGruppo) {
+  const cnt = {}; for (const r of ST) { const x = (r.scelte || []).find(q => q.g == nomeGruppo); if (x) cnt[x.k] = (cnt[x.k] || 0) + 1 }
+  const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0]; if (!top || top[1] < 3) return null;
+  const [fam, par, sd, td, be, ts, reg, rs] = top[0].split('|'); return { c: { fam, par: JSON.parse(par), sd: +sd, td: +td, be: +be, ts: +ts, reg, rs: +rs }, volte: top[1], su: ST.length }
+}
 const REGN = { n: 'nessun filtro di mercato', breadth: 'compra solo se almeno metà dei mercati è sopra la media a 200 periodi', leader: 'compra solo se il mercato guida è sopra la media a 200' };
 const desc = c => `${NAMES[c.fam] || c.fam} ${Object.values(c.par).join('/')}; stop iniziale ${c.sd} ATR, inseguimento ${c.td} ATR${c.be ? ', stop a pareggio dopo +' + c.be + 'R' : ''}${c.ts ? ', uscita dopo ' + c.ts + ' barre se non va' : ''}; ${REGN[c.reg]}${c.rs ? '; solo i più forti' : ''}`;
 // livello di rottura per la prossima barra (quello che deve superare la chiusura)
@@ -22,7 +29,7 @@ function livello(K, c) {
 }
 const out = { at: new Date().toISOString(), cap: CAP, risk: RISK, gruppi: [], log: [] };
 for (const G of GRUPPI) {
-  const sc = B?.groups?.find(g => g.cls == G.cls && g.tf == G.tf)?.scelta, c = sc ? { fam: sc.fam, par: sc.par, sd: sc.sd, td: sc.td, be: sc.be, ts: sc.ts, reg: sc.reg, rs: sc.rs } : G.def, S = [];
+  const sc = B?.groups?.find(g => g.cls == G.cls && g.tf == G.tf)?.scelta, stab = stabile(G.cls + ' ' + G.tf), ultima = sc ? { fam: sc.fam, par: sc.par, sd: sc.sd, td: sc.td, be: sc.be, ts: sc.ts, reg: sc.reg, rs: sc.rs } : null, c = stab ? stab.c : ultima || G.def, S = [];
   for (const u of U.filter(u => u.cls == G.cls)) {
     try { let raw = u.src == 'b' ? await histB(u.sym, G.tf, 1500) : await histY(u.sym); raw = raw.filter(r => r[0] + G.ms <= Date.now()); if (raw.length < 300) throw new Error('storia corta'); S.push({ u, K: prep(raw, G.ms) }); if (u.src == 'y') await sleep(300) }
     catch (e) { out.log.push(u.sym + ': ' + e.message) }
@@ -32,7 +39,7 @@ for (const G of GRUPPI) {
   S.forEach((s, q) => { const K = s.K, i = K.n - 1; const a = K.c[i] > K.ema(200)[i]; if (a) up++; if (q == 0) s.lead = a; s.rs = K.c[i] / K.c[i - 90] - 1; rets.push(s.rs) });
   rets.sort((a, b) => a - b); const med = rets[Math.floor(rets.length / 2)], quota = up / S.length;
   const regOk = c.reg == 'n' ? true : c.reg == 'breadth' ? quota >= 0.5 : S[0].lead !== false;
-  const G2 = { id: G.id, nome: G.nome, tf: G.tf, ottimizzata: !!sc, aggiornataIl: B?.at || null, strategia: { ...c, nome: NAMES[c.fam], testo: desc(c) }, regime: { sopraEma200: up, su: S.length, quota: +quota.toFixed(2), attivo: regOk, mediana: +med.toFixed(4) }, mercati: [] };
+  const G2 = { id: G.id, nome: G.nome, tf: G.tf, ottimizzata: !!sc, aggiornataIl: B?.at || null, strategia: { ...c, nome: NAMES[c.fam], testo: desc(c), stabile: stab ? stab.volte + ' su ' + stab.su : null, ultimaOttimizzazione: ultima ? desc(ultima) : null }, regime: { sopraEma200: up, su: S.length, quota: +quota.toFixed(2), attivo: regOk, mediana: +med.toFixed(4) }, mercati: [] };
   for (const s of S) {
     const K = s.K, n = K.n, sig = ENT[c.fam](K, c.par); let busy = -1, pos = null;
     for (let i = W0; i < n - 1; i++) {
