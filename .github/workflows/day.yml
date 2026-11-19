@@ -1,0 +1,23 @@
+name: Day trading
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '47 6 * * *'
+    - cron: '47 18 * * *'
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node --max-old-space-size=6000 backtest/day.mjs
+      - run: |
+          git config user.name "sentinella-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add risultati
+          git commit -m "Day trading: ottimizzazione agenti" || echo nulla
+          for i in 1 2 3 4; do git pull --rebase origin main && git push origin main && break; sleep 6; done
